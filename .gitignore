@@ -1,0 +1,9 @@
+.project
+.classpath
+.gradle/
+.settings/
+bin/
+build/
+run/
+tangle-explorer.zip
+.git-old/

@@ -1,0 +1,55 @@
+.hashtd {
+	max-width: 80%;
+	display: block;
+	word-break: break-all;
+	overflow-wrap: break-word;
+    position: absolute;
+	left: 0;
+	right: 0;
+}
+
+.hash {
+   white-space: pre-wrap;      /* CSS3 */   
+   white-space: -moz-pre-wrap; /* Firefox */    
+   white-space: -pre-wrap;     /* Opera <7 */   
+   white-space: -o-pre-wrap;   /* Opera 7 */    
+   word-wrap: break-word;      /* IE */
+}
+
+.table .hashtd {
+  position: relative;
+}
+
+.monospace {
+  font-family:Consolas,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New, monospace;
+}
+.lbl-tag {
+	font-size: 16px;
+}
+
+.iotabold {
+	font-weight: 800;
+}
+
+canvas {
+  max-width: 100%;
+}
+
+.logo {
+	display: inline-block;
+	max-width: 30px;
+	max-height: 30px;
+    margin-top: -5px;
+    margin-right: 7px;
+}
+
+.graph {
+	min-height: 400px;
+	height: 400px;
+	position: relative;
+}
+
+.flip-clock {
+    display: inline-block;
+    width: auto;
+}

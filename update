@@ -1,0 +1,7 @@
+prev=$(git rev-list HEAD -n 1)
+git pull origin master
+
+# exit if nothing changed
+test $prev = $(git rev-list HEAD -n 1) && exit 1
+
+./gradlew build && mv build/distributions/tangle-explorer.zip tangle-explorer.zip && unzip tangle-explorer.zip && rm -rf run && mv tangle-explorer run

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="description" content="">
+	<meta name="author" content="">
+
+
+
+	<link rel="apple-touch-icon-precomposed" sizes="57x57" href="https://iotasear.ch/favicon/apple-touch-icon-57x57.png" />
+	<link rel="apple-touch-icon-precomposed" sizes="114x114" href="https://iotasear.ch/favicon/apple-touch-icon-114x114.png" />
+	<link rel="apple-touch-icon-precomposed" sizes="72x72" href="https://iotasear.ch/favicon/apple-touch-icon-72x72.png" />
+	<link rel="apple-touch-icon-precomposed" sizes="144x144" href="https://iotasear.ch/favicon/apple-touch-icon-144x144.png" />
+	<link rel="apple-touch-icon-precomposed" sizes="60x60" href="https://iotasear.ch/favicon/apple-touch-icon-60x60.png" />
+	<link rel="apple-touch-icon-precomposed" sizes="120x120" href="https://iotasear.ch/favicon/apple-touch-icon-120x120.png" />
+	<link rel="apple-touch-icon-precomposed" sizes="76x76" href="https://iotasear.ch/favicon/apple-touch-icon-76x76.png" />
+	<link rel="apple-touch-icon-precomposed" sizes="152x152" href="https://iotasear.ch/favicon/apple-touch-icon-152x152.png" />
+	<link rel="icon" type="image/png" href="https://iotasear.ch/favicon/favicon-196x196.png" sizes="196x196" />
+	<link rel="icon" type="image/png" href="https://iotasear.ch/favicon/favicon-96x96.png" sizes="96x96" />
+	<link rel="icon" type="image/png" href="https://iotasear.ch/favicon/favicon-32x32.png" sizes="32x32" />
+	<link rel="icon" type="image/png" href="https://iotasear.ch/favicon/favicon-16x16.png" sizes="16x16" />
+	<link rel="icon" type="image/png" href="https://iotasear.ch/favicon/favicon-128.png" sizes="128x128" />
+	<meta name="application-name" content="&nbsp;"/>
+	<meta name="msapplication-TileColor" content="#FFFFFF" />
+	<meta name="msapplication-TileImage" content="https://iotasear.ch/favicon/mstile-144x144.png" />
+	<meta name="msapplication-square70x70logo" content="https://iotasear.ch/favicon/mstile-70x70.png" />
+	<meta name="msapplication-square150x150logo" content="https://iotasear.ch/favicon/mstile-150x150.png" />
+	<meta name="msapplication-wide310x150logo" content="https://iotasear.ch/favicon/mstile-310x150.png" />
+	<meta name="msapplication-square310x310logo" content="https://iotasear.ch/favicon/mstile-310x310.png" />
+	<!--noindexmeta-->
+
+
+	<meta name="google-site-verification" content="6a-lj4vm21ErkNt6TZ9QnbhqrbbxuPU6UdvEi8SRVEI" />
+
+	<title>IOTA Tangle Explorer</title>
+
+    <!-- jQuery Version 1.11.1 -->
+    <script src="/js/jquery.js"></script>
+
+    <!-- clipboard -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/1.7.1/clipboard.min.js"></script>
+
+	<!-- Bootstrap Core CSS -->
+	<link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+	<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+	
+	<link href="/css/core.css" rel="stylesheet">
+
+	<!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+	<!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+        <![endif]-->
+
+
+        <!-- Search bar enter -->
+        <script>
+        	function doSearch(hash) {
+			    window.location.href = '/hash/' + ((hash === undefined) ? $('#srch-term').val() : hash);
+			}
+
+        </script>
+
+    </head>
+
+    <body>
+
+    	<!-- Navigation -->
+    	<nav class="navbar navbar-default navbar-toggleable-md" role="navigation">
+
+    		<div class="container">
+    			<!-- Brand and toggle get grouped for better mobile display -->
+    			<div class="navbar-header">
+    				<a class="navbar-brand" href="/"><span>
+    					<img src="https://iotasear.ch/logo.png" class="img-responsive logo" />
+    					<span class="iotabold">IOTA</span>Sear.ch Tangle Explorer
+    					</span>
+    				</a>
+			    
+
+    			</div>
+			    <ul class="nav navbar-nav">
+			      <li><a href="/faq">FAQ</a></li>
+			      <li><a href="/donors">Donors</a></li>
+			    </ul>
+
+
+					<div class="navbar-form pull-right" role="search" style="min-width: 50%;">
+						<div class="input-group" style="min-width: 100%;">
+							<input type="text" class="form-control" placeholder="Address/Transaction/Bundle Hash" id="srch-term">
+							<div class="input-group-btn">
+								<button type="submit" class="btn btn-primary" onclick="doSearch()">Search!</button>
+							</div>
+						</div>
+					</div>
+    		</div>
+    		<!-- /.container -->
+    	</nav>
+    	<div class="container">
