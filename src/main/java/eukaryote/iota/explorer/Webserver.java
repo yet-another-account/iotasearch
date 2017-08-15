@@ -115,6 +115,9 @@ public class Webserver extends NanoHTTPD {
 
 		files.put("/google5c70ae64d13d35e2.html", "google-site-verification: google5c70ae64d13d35e2.html");
 
+		// opensearch xml
+		files.put("/opensearch.xml", FileUtils.readFileToString(new File("html/opensearch.xml"), Charset.forName("UTF-8")));
+		
 		addDir("html/css");
 		addDir("html/js");
 		addDir("html/fonts");
@@ -214,6 +217,8 @@ public class Webserver extends NanoHTTPD {
 				return newFixedLengthResponse(Status.OK, MIME_CSS, files.get(uri));
 			if (uri.endsWith(".png"))
 				return newFixedLengthResponse(Status.OK, MIME_PNG, files.get(uri));
+			if (uri.endsWith(".xml"))
+				return newFixedLengthResponse(Status.OK, MIME_XML, files.get(uri));
 			else
 				return newFixedLengthResponse(files.get(uri));
 		}
