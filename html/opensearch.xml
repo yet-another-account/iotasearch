@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
   <ShortName>IOTA Sear.ch</ShortName>
-  <Image width="16" height="16">https://iotasear.ch/favicon.ico</Image>
-  <Url type="text/html" template="https://iotasear.ch/search/{searchTerms}" />
+  <Image height="32" width="32" type="image/png">https://iotasear.ch/favicon/favicon-32x32.png</Image>
+  <Image height="96" width="96" type="image/png">https://iotasear.ch/favicon/favicon-96x96.png</Image>
+  <Url type="text/html" template="https://iotasear.ch/hash/{searchTerms}" />
   <Tags></Tags>
 </OpenSearchDescription>
