@@ -337,10 +337,14 @@ public class Webserver extends NanoHTTPD {
 			if (b) {
 				return 1;
 			} else {
+				return 0;
+				
+				/*
 				if (txn.getTimestamp() + threshold > System.currentTimeMillis() / 1000)
 					return 0;
 				else
 					return -1;
+					*/
 			}
 		} catch (Exception e) {
 			log.error("err", e);
@@ -461,7 +465,7 @@ public class Webserver extends NanoHTTPD {
 		sb.append("<tbody>");
 		for (Transaction txn : txnobjs) {
 			int num = getConfirmedNum(txn);
-			if (num == -1) {
+			if (num == 0) {
 
 				sb.append("<tr class=\"danger\">");
 			} else if (num == 1) {
