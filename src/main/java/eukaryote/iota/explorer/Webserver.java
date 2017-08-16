@@ -325,7 +325,7 @@ public class Webserver extends NanoHTTPD {
 		if (num == 1)
 			return "Confirmed";
 		else if (num == 0)
-			return "Pending";
+			return "Unconfirmed";
 		else
 			return "Failed";
 	}
