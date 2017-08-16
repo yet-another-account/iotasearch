@@ -32,6 +32,7 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
 
+import eukaryote.iota.confstat.ConfirmationStat;
 import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.NanoHTTPD.Response.Status;
 import jota.IotaAPI;
@@ -50,6 +51,8 @@ public class Webserver extends NanoHTTPD {
 
 	GraphFormatter gf;
 	NZBundles nzb;
+	
+	ConfirmationStat stat;
 
 	double rate;
 
@@ -91,6 +94,7 @@ public class Webserver extends NanoHTTPD {
 
 		gf = new GraphFormatter(api);
 		nzb = new NZBundles(api, new URI("ws://node.iotasear.ch:5557"));
+		stat = new ConfirmationStat(api);
 	}
 
 	protected void updatePages() throws IOException {
@@ -271,20 +275,25 @@ public class Webserver extends NanoHTTPD {
 		String trunk = "<a href=\"/hash/" + txn.getTrunkTransaction() + "\">" + txn.getTrunkTransaction() + "</a>";
 		String branch = "<a href=\"/hash/" + txn.getBranchTransaction() + "\">" + txn.getBranchTransaction() + "</a>";
 
-		return title.matcher(gf.formatTransaction(
-				files.get("/txn")
-						.replace("<$addrlink$>", addrlink).replace("<$hash$>", txn.getHash())
-						.replace("<$amt$>",
-								IotaUnitConverter.convertRawIotaAmountToDisplayText(Math.abs(txn.getValue()), true))
-						.replace("<$time$>",
-								dateFormatGmt.format(new Date(txn.getTimestamp() * 1000))
-										// ... ago
-										+ " (" + formatAgo(txn.getTimestamp()) + " ago)")
-						.replace("<$tag$>", txn.getTag().replaceFirst("9+$", "")).replace("<$nonce$>", txn.getNonce())
-						.replace("<$msgraw$>", txn.getSignatureFragments()).replace("<$branch$>", branch)
-						.replace("<$trunk$>", trunk).replace("<$bundle$>", bdllink)
-						.replace("<$stat$>", getConfirmed(txn)).replace("<$graph$>", files.get("/tanglegraph")),
-				txn.getHash())).replaceFirst("<title>Iota Transaction " + txn.getHash() + "</title>");
+		try {
+			return title.matcher(gf.formatTransaction(
+					files.get("/txn")
+							.replace("<$addrlink$>", addrlink).replace("<$hash$>", txn.getHash())
+							.replace("<$amt$>",
+									IotaUnitConverter.convertRawIotaAmountToDisplayText(Math.abs(txn.getValue()), true))
+							.replace("<$time$>",
+									dateFormatGmt.format(new Date(txn.getTimestamp() * 1000))
+											// ... ago
+											+ " (" + formatAgo(txn.getTimestamp()) + " ago)")
+							.replace("<$tag$>", txn.getTag().replaceFirst("9+$", "")).replace("<$nonce$>", txn.getNonce())
+							.replace("<$msgraw$>", txn.getSignatureFragments()).replace("<$branch$>", branch)
+							.replace("<$trunk$>", trunk).replace("<$bundle$>", bdllink)
+							.replace("<$stat$>", stat.statusOf(txn).toString()).replace("<$graph$>", files.get("/tanglegraph")),
+					txn.getHash())).replaceFirst("<title>Iota Transaction " + txn.getHash() + "</title>");
+		} catch (NoNodeInfoException e) {
+            return "<h1>500 Internal Server Error</h1>\n"
+                    + "Node is probably down, try again later. If stuff is still broken, scream at me on slack (@eukaryote) until I fix things.";
+        }
 	}
 
 	public static String formatAgo(long epochsec) {
