@@ -18,7 +18,7 @@ public class UpdThread extends TimerTask {
 		try {
 			ws.updatePrice();
 		} catch (Exception e) {
-			log.error("Timer error ", ws);
+			log.error("Timer error ", e);
 		}
 	}
 	

@@ -178,7 +178,7 @@ public class Webserver extends NanoHTTPD {
 					}
 
 				} catch (IllegalAccessError | Exception e) {
-					log.debug("Error:", e);
+					log.error("Error:", e);
 					// invalid txn hash
 				}
 
