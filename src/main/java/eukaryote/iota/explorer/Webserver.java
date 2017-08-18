@@ -262,7 +262,7 @@ public class Webserver extends NanoHTTPD {
 				.replace("<$neighbors$>", "" + nodeInfo.getNeighbors()).replace("<$tips$>", "" + nodeInfo.getTips())
 				.replace("<$cput$>", "" + nodeInfo.getJreAvailableProcessors())
 				.replace("<$memt$>", "" + readableFileSize(nodeInfo.getJreTotalMemory()))
-				.replace("<$lasttxns$>", nzb.genTblBody())
+				.replace("<$lasttxns$>", nzb == null ? "" : nzb.genTblBody())
 				.replace("<$graph$>", files.get("/tanglegraph")), milestone);
 	}
 
