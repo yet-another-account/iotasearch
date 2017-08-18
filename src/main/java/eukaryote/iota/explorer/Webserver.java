@@ -134,7 +134,7 @@ public class Webserver extends NanoHTTPD {
 
 	@Override
 	public Response serve(IHTTPSession session) {
-		log.info("URL Requested: {}", session.getUri());
+		log.debug("URL Requested: {}", session.getUri());
 		String uri = session.getUri();
 
 		// if (uri.equals("/test"))
