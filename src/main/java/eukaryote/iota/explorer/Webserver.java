@@ -93,7 +93,7 @@ public class Webserver extends NanoHTTPD {
 		start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
 
 		gf = new GraphFormatter(api);
-		nzb = new NZBundles(api, new URI("ws://node.iotasear.ch:5557"));
+		nzb = new NZBundles(api, new URI("ws://iotasear.ch:5557"));
 		stat = new ConfirmationStat(api);
 	}
 
