@@ -21,6 +21,8 @@ import lombok.extern.slf4j.Slf4j;
 public class NZBundles extends WebSocketClient {
 	Gson gson = new Gson();
 	IotaAPI api;
+	Webserver ws;
+	
 	TreeSet<Message> queue = new TreeSet<>(new Comparator<Message>() {
 
 		@Override
@@ -29,11 +31,14 @@ public class NZBundles extends WebSocketClient {
 		}
 		
 	});
+	private URI serverUri;
 
-	public NZBundles(IotaAPI api, URI serverUri) {
+	public NZBundles(Webserver ws, IotaAPI api, URI serverUri) {
 		super(serverUri);
 		this.api = api;
+		this.serverUri = serverUri;
 		this.connect();
+		this.ws = ws;
 	}
 
 	@Override
@@ -56,6 +61,9 @@ public class NZBundles extends WebSocketClient {
 	@Override
 	public void onClose(int code, String reason, boolean remote) {
 		log.info("ZMQ ws closed");
+		
+		log.warn("Auto restarting ZMQ websocket...");
+		ws.nzb = new NZBundles(ws, api, serverUri);
 	}
 
 	@Override
