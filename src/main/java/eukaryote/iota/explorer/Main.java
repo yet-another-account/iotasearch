@@ -14,7 +14,7 @@ public class Main {
 		Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
 		root.setLevel(Level.INFO);
 
-		int port = 1955;
+		int port = 80;
 		
 		log.info("Starting on port {}", port);
 		
