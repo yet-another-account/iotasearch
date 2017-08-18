@@ -116,10 +116,6 @@ public class Webserver extends NanoHTTPD {
 				"<meta name=\"robots\" content=\"noindex\">"));
 		files.put("/tanglegraph",
 				FileUtils.readFileToString(new File("html/tanglegraph.html"), Charset.forName("UTF-8")));
-
-		// hostname test
-		files.put("/hostname", new BufferedReader(
-				new InputStreamReader(Runtime.getRuntime().exec("hostname").getInputStream())).readLine());
 		
 		// google verification
 
