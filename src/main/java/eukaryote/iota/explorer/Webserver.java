@@ -52,6 +52,8 @@ public class Webserver extends NanoHTTPD {
 	GraphFormatter gf;
 	NZBundles nzb;
 	
+	int nzbattempts = 0;
+	
 	ConfirmationStat stat;
 
 	double rate;
@@ -62,7 +64,7 @@ public class Webserver extends NanoHTTPD {
 	private SimpleDateFormat dateFormatGmt;
 	private URL cmciotaprice;
 
-	String index = "<h1>Please wait, server is starting</h1>";
+	String index = "";
 
 	public Webserver(int port) throws IOException, URISyntaxException {
 		super(port);
@@ -115,6 +117,10 @@ public class Webserver extends NanoHTTPD {
 		files.put("/tanglegraph",
 				FileUtils.readFileToString(new File("html/tanglegraph.html"), Charset.forName("UTF-8")));
 
+		// hostname test
+		files.put("/hostname", new BufferedReader(
+				new InputStreamReader(Runtime.getRuntime().exec("hostname").getInputStream())).readLine());
+		
 		// google verification
 
 		files.put("/google5c70ae64d13d35e2.html", "google-site-verification: google5c70ae64d13d35e2.html");
@@ -142,6 +148,8 @@ public class Webserver extends NanoHTTPD {
 
 		// root
 		if (uri.equals("/")) {
+			if (index.isEmpty())
+				return newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_HTML, "<h1>Please wait, server is starting</h1>");
 			return newFixedLengthResponse(index);
 		} else if (uri.startsWith("/hash")) {
 			// get hash

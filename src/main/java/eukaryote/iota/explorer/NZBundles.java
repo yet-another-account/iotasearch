@@ -37,13 +37,15 @@ public class NZBundles extends WebSocketClient {
 		super(serverUri);
 		this.api = api;
 		this.serverUri = serverUri;
-		this.connect();
 		this.ws = ws;
+		
+		this.connect();
 	}
 
 	@Override
 	public void onOpen(ServerHandshake handshakedata) {
 		log.info("ZMQ WS open");
+		ws.nzbattempts = 0;
 	}
 
 	@Override
@@ -63,7 +65,12 @@ public class NZBundles extends WebSocketClient {
 		log.info("ZMQ ws closed");
 		
 		log.warn("Auto restarting ZMQ websocket...");
+		
+		if (ws.nzbattempts > 10)
+			return;
+		
 		ws.nzb = new NZBundles(ws, api, serverUri);
+		ws.nzbattempts++;
 	}
 
 	@Override
