@@ -52,6 +52,8 @@ public class Webserver extends NanoHTTPD {
 	GraphFormatter gf;
 	NZBundles nzb;
 	
+	SnapshotLoader sl;
+	
 	int nzbattempts = 0;
 	
 	ConfirmationStat stat;
@@ -97,6 +99,7 @@ public class Webserver extends NanoHTTPD {
 		gf = new GraphFormatter(api);
 		nzb = new NZBundles(this, api, new URI("ws://localhost:5557"));
 		stat = new ConfirmationStat(api);
+		sl = new SnapshotLoader(new File("snapshot"));
 	}
 
 	protected void updatePages() throws IOException {
@@ -206,10 +209,12 @@ public class Webserver extends NanoHTTPD {
 				FindTransactionResponse ftba = api.findTransactionsByAddresses(hash);
 
 				log.debug("Hashreq Duration: {}", ftba.getDuration());
-
+				
+				long presnapshotval = sl.getPreSnapshot(hash);
+				
 				log.info("addr");
-				if (ftba.getHashes().length != 0)
-					return newFixedLengthResponse(formatAddr(hash, ftba.getHashes()));
+				if (ftba.getHashes().length != 0 || presnapshotval != 0)
+					return newFixedLengthResponse(formatAddr(hash, ftba.getHashes(), presnapshotval));
 			} catch (IllegalAccessError | Exception e) {
 				log.debug("Error:", e);
 				// invalid address hash
@@ -425,7 +430,7 @@ public class Webserver extends NanoHTTPD {
 
 	String coordinator = "KPWCHICGJZXKE9GSUDXZYUAPLHAKAHYHDXNPHENTERYMMBQOPSQIDENXKLKCEYCPVTZQLEEJVYJZV9BWU";
 
-	public String formatAddr(String addr, String[] hashes) {
+	public String formatAddr(String addr, String[] hashes, long presnapshotval) {
 		NumberFormat formatter = NumberFormat.getCurrencyInstance();
 
 		log.debug("Formatting hashes (count: {})", hashes.length);
@@ -441,8 +446,10 @@ public class Webserver extends NanoHTTPD {
 
 		long bal = Long.parseLong(api.getBalances(1, new String[] { addr }).getBalances()[0]);
 
-		sb.append("<tr><td>Final Balance: </td><td>" + IotaUnitConverter.convertRawIotaAmountToDisplayText(bal, true)
+		sb.append("<tr><td>Balance as of Snapshot: </td><td>" + IotaUnitConverter.convertRawIotaAmountToDisplayText(presnapshotval, true)
 				+ "</td></tr>");
+		sb.append("<tr><td>Final Balance: </td><td>" + IotaUnitConverter.convertRawIotaAmountToDisplayText(bal, true)
+		+ "</td></tr>");
 
 		// add usd val
 		double usdval = (bal * rate / 1000000);
