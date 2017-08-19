@@ -446,8 +446,6 @@ public class Webserver extends NanoHTTPD {
 
 		long bal = Long.parseLong(api.getBalances(1, new String[] { addr }).getBalances()[0]);
 
-		sb.append("<tr><td>Balance as of Snapshot: </td><td>" + IotaUnitConverter.convertRawIotaAmountToDisplayText(presnapshotval, true)
-				+ "</td></tr>");
 		sb.append("<tr><td>Final Balance: </td><td>" + IotaUnitConverter.convertRawIotaAmountToDisplayText(bal, true)
 		+ "</td></tr>");
 
@@ -520,6 +518,15 @@ public class Webserver extends NanoHTTPD {
 			sb.append("</td>");
 			sb.append("</tr>");
 		}
+		
+		// snapshot
+		if (presnapshotval != 0) {
+			sb.append("<tr><td colspan = \"5\" class=\"text-center\">Snapshot</td>"
+					+ "<td><span class=\"label label-success\">IN</span></td><td>"
+					+ IotaUnitConverter.convertRawIotaAmountToDisplayText(presnapshotval, true)
+					+ "</td>");
+		}
+		
 		sb.append("</tbody>");
 
 		sb.append("</table>");
