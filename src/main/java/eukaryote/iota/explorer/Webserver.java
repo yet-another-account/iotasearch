@@ -210,7 +210,7 @@ public class Webserver extends NanoHTTPD {
 
 				log.debug("Hashreq Duration: {}", ftba.getDuration());
 				
-				long presnapshotval = sl.getPreSnapshot(hash);
+				long presnapshotval = sl.getPreSnapshot(hash.substring(0, 81));
 				
 				log.info("addr");
 				if (ftba.getHashes().length != 0 || presnapshotval != 0)
@@ -518,6 +518,8 @@ public class Webserver extends NanoHTTPD {
 			sb.append("</td>");
 			sb.append("</tr>");
 		}
+		
+		log.info("pval {}", presnapshotval);
 		
 		// snapshot
 		if (presnapshotval != 0) {
