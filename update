@@ -1,5 +1,5 @@
 prev=$(git rev-list HEAD -n 1)
-git pull origin master
+git pull
 
 # exit if nothing changed
 test $prev = $(git rev-list HEAD -n 1) && exit 1

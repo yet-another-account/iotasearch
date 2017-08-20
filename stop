@@ -3,5 +3,5 @@ if [ "$(id -u)" != "0" ]; then
    exit 1
 fi
 
-PORT_NUMBER=1955
+PORT_NUMBER=80
 lsof -i tcp:${PORT_NUMBER} | awk 'NR!=1 {print $2}' | xargs kill
