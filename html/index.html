@@ -43,7 +43,7 @@
 		minimumDigits: 4
 	});
 
-	var wss = new WebSocket("wss://iotasear.ch/newtxns/");
+	var wss = new WebSocket("wss://tangle.blox.pm:8081");
 
 	wss.onmessage = () => { clock.increment(); };
 </script>
