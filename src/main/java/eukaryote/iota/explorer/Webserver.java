@@ -88,7 +88,7 @@ public class Webserver extends NanoHTTPD {
 		dateFormatGmt = new SimpleDateFormat("yyyy-MMM-dd HH:mm:ss");
 		dateFormatGmt.setTimeZone(TimeZone.getTimeZone("GMT"));
 
-		api = new IotaAPI.Builder().protocol("http").host("service.iotasupport.com").port("14265").build();
+		api = new IotaAPI.Builder().protocol("http").host("node.iotasear.ch").port("14265").build();
 
 		updatePages();
 
