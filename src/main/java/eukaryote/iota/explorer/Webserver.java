@@ -21,10 +21,12 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -41,6 +43,7 @@ import jota.dto.response.GetBundleResponse;
 import jota.dto.response.GetNodeInfoResponse;
 import jota.error.NoNodeInfoException;
 import jota.model.Transaction;
+import jota.utils.Checksum;
 import jota.utils.IotaUnitConverter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -205,6 +208,9 @@ public class Webserver extends NanoHTTPD {
 				}
 
 			try {
+				if (hash.length() == 81)
+					hash = Checksum.addChecksum(hash);
+				
 				// check if address
 				FindTransactionResponse ftba = api.findTransactionsByAddresses(hash);
 
@@ -481,16 +487,42 @@ public class Webserver extends NanoHTTPD {
 				"<thead><tr><th>Age</th><th>Status</th><th>Transaction Hash</th><th>Bundle Hash</th><th>Tag</th><th></th><th>Amount</th></tr></thead>");
 
 		sb.append("<tbody>");
+		
+		Set<String> confirmedbdls = new HashSet<>(32);
+		Map<String, Integer> confirmed = new HashMap<>(32);
+		
+		Map<String, Integer> unconfirmed = new HashMap<>(32);
+		
 		for (Transaction txn : txnobjs) {
 			int num = getConfirmedNum(txn);
+			
+			confirmed.put(txn.getHash(), num);
+			
+			if (num != 1) {
+				unconfirmed.compute(txn.getBundle(), (key, oldval) -> {
+					return oldval == null ? 1 : oldval + 1;
+				});
+			}
+			
+			if (num == 1)
+				confirmedbdls.add(txn.getBundle());
+		}
+		
+		for (Transaction txn : txnobjs) {
+			int num = confirmed.get(txn.getHash());
+			
 			if (num == 0) {
-
 				sb.append("<tr class=\"danger\">");
 			} else if (num == 1) {
 				sb.append("<tr>");
 			} else {
 				sb.append("<tr class=\"warning\">");
 			}
+			
+			// skip if not confirmed but bundle is confirmed
+			if (num != 1 && confirmedbdls.contains(txn.getBundle()))
+				continue;
+			
 			sb.append("<td>");
 			sb.append(formatAgo(txn.getTimestamp()));
 			sb.append("</td>");
@@ -517,9 +549,17 @@ public class Webserver extends NanoHTTPD {
 			sb.append(IotaUnitConverter.convertRawIotaAmountToDisplayText(Math.abs(txn.getValue()), true));
 			sb.append("</td>");
 			sb.append("</tr>");
+			if (num == 1 && unconfirmed.containsKey(txn.getBundle())) {
+				// main, confirmed tx
+				
+				
+				int txncount = unconfirmed.get(txn.getBundle());
+				sb.append("<tr><td colspan=\"5\">&emsp;<i class=\"fa fa-level-up fa-rotate-90\"></i>&emsp;... " + txncount + " more duplicate unconfirmed transaction"
+						+ (txncount == 1 ? "" : "s") + " (probably reattaches)</td></tr>");
+			}
 		}
 		
-		log.info("pval {}", presnapshotval);
+		log.debug("pval {}", presnapshotval);
 		
 		// snapshot
 		if (presnapshotval != 0) {
@@ -566,6 +606,7 @@ public class Webserver extends NanoHTTPD {
 	}
 
 	static DecimalFormat fmt = new DecimalFormat("#,##0.#");
+	
 
 	public static String readableFileSize(long size) {
 		if (size <= 0)
