@@ -1,2 +1,15 @@
 <h1 class="text-center">Iota Address Info</h1>
+
 <$table$>
+<script src="/js/identi-qr.js"></script>
+<script>
+	this.qrcode = new QRCode(document.getElementById("qr"), {
+	  text: '{"address":"<$addr$>","amount":"","message":"","tag":""}',	
+	  correctLevel : QRCode.CorrectLevel.M
+	})
+</script>
+<style>
+#qr img {
+   display: inline-block !important; 
+}
+</style>

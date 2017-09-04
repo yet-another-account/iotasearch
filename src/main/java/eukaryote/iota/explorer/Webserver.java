@@ -444,6 +444,11 @@ public class Webserver extends NanoHTTPD {
 		// if (addr.equals(coordinator))
 		// sb.append("<h2 class=\"text-center\">Coordinator</h2>");
 
+		sb.append("<div class=\"row\">");
+		sb.append("<div class=\"col-lg-3 col-md-4\"> <div id=\"qr\" class=\"text-center\"></div>");
+		sb.append("</div>");	// /col-lg-2
+		sb.append("<div class=\"col-lg-9 col-md-8\">");
+		
 		sb.append("<table class=\"table\">");
 
 		sb.append("<tr><td>Address: </td><td class=\"hashtd\"> <span id=\"hashdisp\">" + addr + "</span></td></tr>");
@@ -460,6 +465,9 @@ public class Webserver extends NanoHTTPD {
 						+ " (@ $" + rate + "/Mi)</td></tr>");
 		sb.append("<tr><td>Number of Transactions: </td><td>" + hashes.length + "</td></tr>");
 		sb.append("</table>");
+
+		sb.append("</div>");	// /col-lg-10
+		sb.append("</div>");	// /row
 
 		sb.append("<table class=\"table table-striped table-hover\">");
 
@@ -574,7 +582,7 @@ public class Webserver extends NanoHTTPD {
 		log.debug("Built table");
 
 		return title.matcher(
-				files.get("/addr").replace("<$table$>", sb.toString())).replaceFirst("<title>IOTA Address " + addr + "</title>");
+				files.get("/addr").replace("<$addr$>", addr).replace("<$table$>", sb.toString())).replaceFirst("<title>IOTA Address " + addr + "</title>");
 	}
 
 	public void addDir(String dir) throws IOException {
