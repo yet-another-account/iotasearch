@@ -208,8 +208,6 @@ public class Webserver extends NanoHTTPD {
 				}
 
 			try {
-				if (hash.length() == 81)
-					hash = Checksum.addChecksum(hash);
 				
 				// check if address
 				FindTransactionResponse ftba = api.findTransactionsByAddresses(hash);
