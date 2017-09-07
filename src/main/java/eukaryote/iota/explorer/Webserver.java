@@ -33,6 +33,7 @@ import java.util.TimerTask;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.RandomUtils;
 
 import eukaryote.iota.confstat.ConfirmationStat;
 import fi.iki.elonen.NanoHTTPD;
@@ -90,8 +91,18 @@ public class Webserver extends NanoHTTPD {
 
 		dateFormatGmt = new SimpleDateFormat("yyyy-MMM-dd HH:mm:ss");
 		dateFormatGmt.setTimeZone(TimeZone.getTimeZone("GMT"));
+		
+		// use public nodes before iotasear.ch node is in service again
+		String[] hosts = {
+				"node01.iotatoken.nl", 
+				"node02.iotatoken.nl", 
+				"node03.iotatoken.nl", 
+				"node.deviceproof.org",
+				"n1.iota.nu",
+				"node.lukaseder.de"
+				};
 
-		api = new IotaAPI.Builder().protocol("http").host("node.iotasear.ch").port("14265").build();
+		api = new IotaAPI.Builder().protocol("http").host(hosts[RandomUtils.nextInt(0, hosts.length)]).port("14265").build();
 
 		updatePages();
 
