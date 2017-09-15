@@ -97,9 +97,8 @@ public class Webserver extends NanoHTTPD {
 				"node01.iotatoken.nl", 
 				"node02.iotatoken.nl", 
 				"node03.iotatoken.nl", 
-				"node.deviceproof.org",
-				"n1.iota.nu",
-				"node.lukaseder.de"
+				"node.deviceproof.org", 
+				"n1.iota.nu"
 				};
 
 		api = new IotaAPI.Builder().protocol("http").host(hosts[RandomUtils.nextInt(0, hosts.length)]).port("14265").build();
