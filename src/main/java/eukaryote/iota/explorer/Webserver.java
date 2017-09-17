@@ -94,11 +94,13 @@ public class Webserver extends NanoHTTPD {
 		
 		// use public nodes before iotasear.ch node is in service again
 		String[] hosts = {
-				"node01.iotatoken.nl", 
 				"node02.iotatoken.nl", 
-				"node03.iotatoken.nl", 
 				"node.deviceproof.org", 
-				"n1.iota.nu"
+				"n1.iota.nu",
+				"iota.digits.blue",
+				"eugene.iota.community",
+				"5.9.149.169",
+				"88.198.230.98"
 				};
 
 		api = new IotaAPI.Builder().protocol("http").host(hosts[RandomUtils.nextInt(0, hosts.length)]).port("14265").build();
