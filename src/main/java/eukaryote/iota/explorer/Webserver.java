@@ -100,7 +100,9 @@ public class Webserver extends NanoHTTPD {
 				"iota.digits.blue",
 				"eugene.iota.community",
 				"5.9.149.169",
-				"88.198.230.98"
+				"88.198.230.98",
+				"service.iotasupport.com",
+				"node.tangle.works"
 				};
 
 		api = new IotaAPI.Builder().protocol("http").host(hosts[RandomUtils.nextInt(0, hosts.length)]).port("14265").build();
