@@ -584,7 +584,7 @@ public class Webserver extends NanoHTTPD {
 		
 		// snapshot
 		if (presnapshotval != 0) {
-			sb.append("<tr><td colspan = \"5\" class=\"text-center\">Snapshot (9 June 2017)</td>"
+			sb.append("<tr><td colspan = \"5\" class=\"text-center\">Snapshot (8 August 2017)</td>"
 					+ "<td><span class=\"label label-success\">IN</span></td><td>"
 					+ IotaUnitConverter.convertRawIotaAmountToDisplayText(presnapshotval, true)
 					+ "</td>");
