@@ -95,17 +95,14 @@ public class Webserver extends NanoHTTPD {
 		// use public nodes before iotasear.ch node is in service again
 		String[] hosts = {
 				"node02.iotatoken.nl", 
-				"node.deviceproof.org", 
 				"n1.iota.nu",
-				"iota.digits.blue",
-				"eugene.iota.community",
 				"5.9.149.169",
 				"88.198.230.98",
 				"service.iotasupport.com",
 				"node.tangle.works"
 				};
 
-		api = new IotaAPI.Builder().protocol("http").host(hosts[RandomUtils.nextInt(0, hosts.length)]).port("14265").build();
+		api = new IotaAPI.Builder().protocol("http").host("n1.iota.nu").port("14265").build();
 
 		updatePages();
 
@@ -222,6 +219,15 @@ public class Webserver extends NanoHTTPD {
 				}
 
 			try {
+				
+				// redirect with checksum
+				if (hash.length() == 81) {
+					hash = Checksum.addChecksum(hash);
+					
+		            Response r = newFixedLengthResponse(Response.Status.REDIRECT, MIME_HTML, "");
+		            r.addHeader("Location", "/hash/" + hash);
+		            return r;	
+				}
 				
 				// check if address
 				FindTransactionResponse ftba = api.findTransactionsByAddresses(hash);
@@ -465,7 +471,8 @@ public class Webserver extends NanoHTTPD {
 		
 		sb.append("<table class=\"table\">");
 
-		sb.append("<tr><td>Address: </td><td class=\"hashtd\"> <span id=\"hashdisp\">" + addr + "</span></td></tr>");
+		sb.append("<tr><td>Address: </td><td class=\"hashtd\"> <span id=\"hashdisp\">" + addr.substring(0, 81)
+		+ "<span title=\"Checksum\" id=\"addr-checksum\" class=\"text-muted\">" + addr.substring(81) + "</span></span></td></tr>");
 
 		long bal = Long.parseLong(api.getBalances(1, new String[] { addr }).getBalances()[0]);
 
