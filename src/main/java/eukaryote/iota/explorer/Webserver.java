@@ -91,15 +91,9 @@ public class Webserver extends NanoHTTPD {
 
 		dateFormatGmt = new SimpleDateFormat("yyyy-MMM-dd HH:mm:ss");
 		dateFormatGmt.setTimeZone(TimeZone.getTimeZone("GMT"));
-		
-		// use public nodes before iotasear.ch node is in service again
+
 		String[] hosts = {
-				"node02.iotatoken.nl", 
-				"n1.iota.nu",
-				"5.9.149.169",
-				"88.198.230.98",
-				"service.iotasupport.com",
-				"node.tangle.works"
+				"node.iotasear.ch"
 				};
 
 		api = new IotaAPI.Builder().protocol("http").host(hosts[RandomUtils.nextInt(0, hosts.length)]).port("14265").build();
