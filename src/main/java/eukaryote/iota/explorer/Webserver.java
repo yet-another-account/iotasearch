@@ -102,7 +102,7 @@ public class Webserver extends NanoHTTPD {
 				"node.tangle.works"
 				};
 
-		api = new IotaAPI.Builder().protocol("http").host("n1.iota.nu").port("14265").build();
+		api = new IotaAPI.Builder().protocol("http").host(hosts[RandomUtils.nextInt(0, hosts.length)]).port("14265").build();
 
 		updatePages();
 
