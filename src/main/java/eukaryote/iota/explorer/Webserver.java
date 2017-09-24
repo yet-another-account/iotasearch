@@ -181,21 +181,20 @@ public class Webserver extends NanoHTTPD {
 			if (hash.length() != 81 && hash.length() != 90)
 				return newFixedLengthResponse(files.get("/404"));
 
-			if (hash.endsWith("99"))
-				try {
-					// check if txn
-					List<Transaction> txns = api.getTransactionsObjects(new String[] { hash });
+			try {
+				// check if txn
+				List<Transaction> txns = api.getTransactionsObjects(new String[] { hash });
 
-					log.debug("txns: {}", txns);
+				log.debug("txns: {}", txns);
 
-					if (!txns.isEmpty()) {
-						return newFixedLengthResponse(formatTransaction(txns.get(0)));
-					}
-
-				} catch (IllegalAccessError | Exception e) {
-					log.error("Error:", e);
-					// invalid txn hash
+				if (!txns.isEmpty()) {
+					return newFixedLengthResponse(formatTransaction(txns.get(0)));
 				}
+
+			} catch (IllegalAccessError | Exception e) {
+				log.error("Error:", e);
+				// invalid txn hash
+			}
 
 			if (hash.length() != 90)
 				try {
