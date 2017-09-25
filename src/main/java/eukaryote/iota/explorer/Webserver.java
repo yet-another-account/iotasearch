@@ -93,7 +93,7 @@ public class Webserver extends NanoHTTPD {
 		dateFormatGmt.setTimeZone(TimeZone.getTimeZone("GMT"));
 
 		String[] hosts = {
-				"node.iotasear.ch"
+				"n1.iota.nu"
 				};
 
 		api = new IotaAPI.Builder().protocol("http").host(hosts[RandomUtils.nextInt(0, hosts.length)]).port("14265").build();
@@ -188,7 +188,8 @@ public class Webserver extends NanoHTTPD {
 
 					log.debug("txns: {}", txns);
 
-					if (!txns.isEmpty()) {
+					if (!txns.isEmpty() || (txns.get(0).getHash()
+							.equals("999999999999999999999999999999999999999999999999999999999999999999999999999999999"))) {
 						return newFixedLengthResponse(formatTransaction(txns.get(0)));
 					}
 
