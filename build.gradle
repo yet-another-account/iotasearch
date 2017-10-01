@@ -13,7 +13,7 @@ dependencies {
     compile 'com.github.iotaledger:iota.lib.java:d5e536e'
     compile 'com.google.code.gson:gson:2.8.0'
     compile 'ch.qos.logback:logback-classic:1.2.3'
-    compile 'com.github.eukaryote31:iota-confirmation-stat:fe55604'
+    compile 'com.github.eukaryote31:iota-confirmation-stat:2512470'
     compile 'org.nanohttpd:nanohttpd:2.3.1'
     compile group: 'commons-io', name: 'commons-io', version: '2.4'
     compile group: 'org.apache.commons', name: 'commons-collections4', version: '4.1'
