@@ -33,15 +33,21 @@
 		</td>
 	</tr>
 	<tr>
-		<td>Message (Raw)</td>
+		<td>Signature (Raw)</td>
 		<td>
 			<textarea class="monospace" readonly rows=6 cols=35><$msgraw$></textarea>
 		</td>
 	</tr>
 	<tr>
-		<td>Time</td>
+		<td>Weight Magnitude</td>
 		<td>
-			<span><$time$></span>
+			<span><$wmag$></span>
+		</td>
+	</tr>
+	<tr>
+		<td>Index</td>
+		<td>
+			<span><$index$> / <$totalindex$></span>
 		</td>
 	</tr>
 	<tr>
@@ -69,7 +75,8 @@
 		</td>
 	</tr>
 </table>
-
-<h1 class="text-center">Tangle Visualization</h1>
-
+<div class="text-center">
+	<h1>Tangle Visualization</h1>
+	Click on a node to view it in the explorer!
+</div>
 <$graph$>

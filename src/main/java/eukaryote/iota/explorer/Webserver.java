@@ -45,6 +45,7 @@ import jota.dto.response.GetNodeInfoResponse;
 import jota.error.NoNodeInfoException;
 import jota.model.Transaction;
 import jota.utils.Checksum;
+import jota.utils.Converter;
 import jota.utils.IotaUnitConverter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -294,6 +295,10 @@ public class Webserver extends NanoHTTPD {
 		return api.getTransactionsObjects(new String[] { hash }).get(0);
 	}
 	static final Pattern title = Pattern.compile("<title>.+</title>");
+	
+	/*
+	 * FORMAT TRANSACTION
+	 */
 	public String formatTransaction(Transaction txn) {
 
 		StringBuilder sb = new StringBuilder();
@@ -310,13 +315,18 @@ public class Webserver extends NanoHTTPD {
 							.replace("<$amt$>",
 									IotaUnitConverter.convertRawIotaAmountToDisplayText(Math.abs(txn.getValue()), true))
 							.replace("<$time$>",
-									dateFormatGmt.format(new Date(txn.getTimestamp() * 1000))
+									dateFormatGmt.format(new Date(txn.getAttachmentTimestamp() * 1000))
 											// ... ago
-											+ " (" + formatAgo(txn.getTimestamp()) + " ago)")
+											+ " (" + formatAgo(txn.getAttachmentTimestamp()) + " ago)")
+							
 							.replace("<$tag$>", txn.getTag().replaceFirst("9+$", "")).replace("<$nonce$>", txn.getNonce())
 							.replace("<$msgraw$>", txn.getSignatureFragments()).replace("<$branch$>", branch)
 							.replace("<$trunk$>", trunk).replace("<$bundle$>", bdllink)
-							.replace("<$stat$>", stat.statusOf(txn).toString()).replace("<$graph$>", files.get("/tanglegraph")),
+							.replace("<$stat$>", stat.statusOf(txn).toString())
+							.replace("<$index$>", "" + (txn.getCurrentIndex()))
+							.replace("<$totalindex$>", "" + (txn.getLastIndex()))
+							.replace("<$wmag$>", "" + getWM(txn))
+							.replace("<$graph$>", files.get("/tanglegraph")),
 					txn.getHash())).replaceFirst("<title>Iota Transaction " + txn.getHash() + "</title>");
 		} catch (NoNodeInfoException e) {
             return "<h1>500 Internal Server Error</h1>\n"
@@ -324,6 +334,20 @@ public class Webserver extends NanoHTTPD {
         }
 	}
 
+	private static int getWM(Transaction txn) {
+		int ret = 0;
+		
+		String hash = txn.getHash();
+		
+		int[] trits = Converter.trits(hash);
+		
+		for (int i = trits.length - 1; i >= 0; i--, ret++)
+			if (trits[i] != 0)
+				break;
+		
+		return ret;
+	}
+	
 	public static String formatAgo(long epochsec) {
 		long before = System.currentTimeMillis() / 1000 - epochsec;
 
@@ -546,7 +570,7 @@ public class Webserver extends NanoHTTPD {
 				continue;
 			
 			sb.append("<td>");
-			sb.append(formatAgo(txn.getTimestamp()));
+			sb.append(formatAgo(txn.getAttachmentTimestamp()));
 			sb.append("</td>");
 			sb.append("<td>");
 			sb.append(getConfirmed(num));
