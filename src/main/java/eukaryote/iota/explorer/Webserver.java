@@ -315,9 +315,9 @@ public class Webserver extends NanoHTTPD {
 							.replace("<$amt$>",
 									IotaUnitConverter.convertRawIotaAmountToDisplayText(Math.abs(txn.getValue()), true))
 							.replace("<$time$>",
-									dateFormatGmt.format(new Date(txn.getAttachmentTimestamp() * 1000))
+									dateFormatGmt.format(new Date(txn.getTimestamp() * 1000))
 											// ... ago
-											+ " (" + formatAgo(txn.getAttachmentTimestamp()) + " ago)")
+											+ " (" + formatAgo(txn.getTimestamp()) + " ago)")
 							
 							.replace("<$tag$>", txn.getTag().replaceFirst("9+$", "")).replace("<$nonce$>", txn.getNonce())
 							.replace("<$msgraw$>", txn.getSignatureFragments()).replace("<$branch$>", branch)
@@ -570,7 +570,7 @@ public class Webserver extends NanoHTTPD {
 				continue;
 			
 			sb.append("<td>");
-			sb.append(formatAgo(txn.getAttachmentTimestamp()));
+			sb.append(formatAgo(txn.getTimestamp()));
 			sb.append("</td>");
 			sb.append("<td>");
 			sb.append(getConfirmed(num));
