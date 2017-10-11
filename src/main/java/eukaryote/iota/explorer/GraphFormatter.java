@@ -26,7 +26,7 @@ public class GraphFormatter {
 		this.api = api;
 	}
 
-	public String formatTransaction(String pagehtml, String txnhash) {
+	public void formatTransaction(String txnhash, Map<String, Object> data) {
 		final int depth = 5;
 		final String[] strarr = new String[] {};
 
@@ -77,10 +77,8 @@ public class GraphFormatter {
 			edges.append(formatEdge(t.getHash(), t.getBranchTransaction()));
 		}
 
-		pagehtml = StringUtils.replaceOnce(pagehtml, "<$edges$>", edges.toString());
-		pagehtml = StringUtils.replaceOnce(pagehtml, "<$nodes$>", nodes.toString());
-
-		return pagehtml;
+		data.put("edges", edges.toString());
+		data.put("nodes", nodes.toString());
 	}
 
 	private String formatNode(String node) {

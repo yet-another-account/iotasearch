@@ -1,3 +1,4 @@
+<#macro header title="">
 <!DOCTYPE html>
 <html lang="en">
 
@@ -102,3 +103,52 @@
     		<!-- /.container -->
     	</nav>
     	<div class="container">
+ 
+ </#macro>
+ <#macro footer title="">
+ <!-- spacing -->
+<div class="form-group">
+    &nbsp;
+</div>
+
+<p>
+	<div class="input-group">
+	  <span class="input-group-addon" id="basic-addon1">Donations&nbsp;<i class="fa fa-heart"></i></span>
+		<input type="text" class="form-control" id="donationaddr" value="FL9LKLBPYVKQ9QZBSGENTIDVMOZMFXREVUNWOY9NB9GMFQWKLPDWCJSRUKYCSQVQMNGAQGDKXQ9VAMSNABFUYUOVAD" readonly>
+	<span class="input-group-btn">
+		<button class="btn btn-green btn-primary" id="donationbtn" data-clipboard-target="#donationaddr">
+		    Copy
+		</button>
+		</span>
+	</div>
+</p>
+
+<div class="text-center"><a href="/">Home</a> | <a href="/donors">Donors</a> | <a href="/faq">FAQ</a></div>
+</div>
+
+<script>new Clipboard('#donationbtn');</script>
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-74273065-3', 'auto');
+  ga('send', 'pageview');
+
+
+
+$('#srch-term').keydown((e) => {if (e.which == 13) doSearch(); });
+</script>
+
+</body>
+
+</html>
+
+
+ </#macro>

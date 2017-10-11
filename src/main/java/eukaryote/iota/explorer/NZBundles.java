@@ -23,7 +23,7 @@ public class NZBundles extends WebSocketClient {
 	IotaAPI api;
 	Webserver ws;
 	
-	TreeSet<Message> queue = new TreeSet<>(new Comparator<Message>() {
+	public TreeSet<Message> queue = new TreeSet<>(new Comparator<Message>() {
 
 		@Override
 		public int compare(Message arg0, Message arg1) {
@@ -51,6 +51,7 @@ public class NZBundles extends WebSocketClient {
 	@Override
 	public void onMessage(String message) {
 		Message m = gson.fromJson(message, Message.class);
+		m.getTimestampLong();
 		
 		if (m.getValue() == 0)
 			return;
@@ -122,26 +123,61 @@ public class NZBundles extends WebSocketClient {
 	}
 
 	@Data
-	class Message {
-		String hash;
-		String address;
-		long value;
-		String tag;
-		String timestamp;
-		String currentIndex;
-		String lastIndex;
-		String bundleHash;
-		String trunkTransaction;
-		String branchTransaction;
-		String arrivalTime;
+	public class Message {
+		public String hash;
+		public String address;
+		public long value;
+		public String tag;
+		public String timestamp;
+		public String currentIndex;
+		public String lastIndex;
+		public String bundleHash;
+		public String trunkTransaction;
+		public String branchTransaction;
+		public String arrivalTime;
 		
-		transient long timestamplong = -1;
+		public transient long timestamplong = -1;
 		
 		public long getTimestampLong() {
 			if (timestamplong <= 0)
 				timestamplong = Long.parseLong(timestamp);
 			
 			return timestamplong;
+		}
+		
+		public String formatAgo() {
+			long before = System.currentTimeMillis() / 1000 - timestamplong;
+
+			if (before <= 0)
+				return "invalid timestamp";
+			
+			if (before < 3 && before > 0)
+				return "just now";
+
+			int sec = (int) (before % 60);
+			before /= 60;
+			int min = (int) (before % 60);
+			before /= 60;
+			int hrs = (int) (before % 24);
+			before /= 24;
+			int days = (int) before;
+
+			// only show 2
+
+			if (days != 0 || hrs != 0)
+				sec = 0;
+
+			if (days != 0)
+				min = 0;
+
+			return ((days == 0) ? "" : (days + " day" + ((days == 1) ? "" : "s") + " "))
+					+ ((hrs == 0) ? "" : (hrs + " hr" + ((hrs == 1) ? "" : "s") + " "))
+					+ ((min == 0) ? "" : (min + " min" + ((min == 1) ? "" : "s") + " "))
+					+ ((sec == 0) ? "" : (sec + " sec" + ((sec == 1) ? "" : "s"))) + " ago";
+		}
+		
+		public String formatAmt() {
+			return IotaUnitConverter.convertRawIotaAmountToDisplayText(value, true);
 		}
 	}
 }

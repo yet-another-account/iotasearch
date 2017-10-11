@@ -16,7 +16,7 @@ public class FastUpdThread extends TimerTask {
 	@Override
 	public void run() {
 		try {
-			ws.index = ws.formatIndex(ws.files.get("/"));
+			ws.index = ws.formatIndex();
 		} catch (Exception e) {
 			log.error("Timer error ", e);
 		}

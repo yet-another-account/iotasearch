@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -16,6 +17,7 @@ import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -38,6 +40,13 @@ import org.apache.commons.lang3.RandomUtils;
 import eukaryote.iota.confstat.ConfirmationStat;
 import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.NanoHTTPD.Response.Status;
+import freemarker.core.ParseException;
+import freemarker.template.Configuration;
+import freemarker.template.MalformedTemplateNameException;
+import freemarker.template.Template;
+import freemarker.template.TemplateException;
+import freemarker.template.TemplateNotFoundException;
+import freemarker.template.Version;
 import jota.IotaAPI;
 import jota.dto.response.FindTransactionResponse;
 import jota.dto.response.GetBundleResponse;
@@ -48,9 +57,12 @@ import jota.utils.Checksum;
 import jota.utils.Converter;
 import jota.utils.IotaUnitConverter;
 import lombok.extern.slf4j.Slf4j;
+import spark.Spark;
+
+import static spark.Spark.*;
 
 @Slf4j
-public class Webserver extends NanoHTTPD {
+public class Webserver {
 	Map<String, String> files = new HashMap<>();
 	IotaAPI api;
 
@@ -71,16 +83,30 @@ public class Webserver extends NanoHTTPD {
 	private SimpleDateFormat dateFormatGmt;
 	private URL cmciotaprice;
 
+	static final Configuration configuration = new Configuration(new Version(2, 3, 23));
+	
 	String index = "";
 
 	public Webserver(int port) throws IOException, URISyntaxException {
-		super(port);
+		
+		port(port);
+		
+		staticFileLocation("/public");
+		configuration.setClassForTemplateLoading(Webserver.class, "/templates/");
+		
+		get("/", (req, res) -> {
+			return index;
+		});
+		
+		get("/hash/:hash", (req, res) -> {
+			return "hash placeholder";
+		});
+		
 
 		Locale.setDefault(Locale.US);
 
 		cmciotaprice = new URL("https://api.coinmarketcap.com/v1/ticker/iota/");
 
-		// update price every 2m
 		TimerTask updprice = new UpdThread(this);
 		Timer timer = new Timer();
 		timer.schedule(updprice, 3 * 1000, 30 * 1000);
@@ -88,13 +114,13 @@ public class Webserver extends NanoHTTPD {
 		// update price every 2m
 		TimerTask updfast = new FastUpdThread(this);
 		Timer timer2 = new Timer();
-		timer2.schedule(updfast, 3 * 1000, 1000);
+		timer2.schedule(updfast, 1000, 4 * 1000);
 
 		dateFormatGmt = new SimpleDateFormat("yyyy-MMM-dd HH:mm:ss");
 		dateFormatGmt.setTimeZone(TimeZone.getTimeZone("GMT"));
 
 		String[] hosts = {
-				"10.128.0.4"
+				"service.iotasupport.com"
 				};
 
 		api = new IotaAPI.Builder().protocol("http").host(hosts[RandomUtils.nextInt(0, hosts.length)]).port("14265").build();
@@ -103,12 +129,34 @@ public class Webserver extends NanoHTTPD {
 
 		// log.info("${}/Mi", rate);
 
-		start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
 
 		gf = new GraphFormatter(api);
-		nzb = new NZBundles(this, api, new URI("ws://localhost:5557"));
+		nzb = new NZBundles(this, api, new URI("ws://tangle.blox.pm:8080"));
 		stat = new ConfirmationStat(api);
 		sl = new SnapshotLoader(new File("snapshot"));
+	}
+	
+	public String formatIndex() throws TemplateNotFoundException, MalformedTemplateNameException, ParseException, IOException, TemplateException {
+		StringWriter writer = new StringWriter();
+		Map<String, Object> data = new HashMap<>();
+
+		GetNodeInfoResponse info = api.getNodeInfo();
+		data.put("ver", info.getAppName() + " " + info.getAppVersion());
+		data.put("milestone", info.getLatestMilestone());
+		data.put("milestoneindex", info.getLatestMilestoneIndex());
+		data.put("ssmilestone", info.getLatestSolidSubtangleMilestone());
+		data.put("ssmilestoneindex", info.getLatestSolidSubtangleMilestoneIndex());
+		data.put("neighbors", info.getNeighbors());
+		data.put("tips", info.getTips());
+		data.put("threads", info.getJreAvailableProcessors());
+		data.put("mem", FileUtils.byteCountToDisplaySize(info.getJreTotalMemory()));
+		data.put("txns", new ArrayList<>(nzb.queue));
+		gf.formatTransaction(info.getLatestMilestone(), data);
+		
+		Template template = configuration.getTemplate("index.ftl");
+		template.process(data, writer);
+		
+		return writer.toString();
 	}
 
 	protected void updatePages() throws IOException {
@@ -145,8 +193,7 @@ public class Webserver extends NanoHTTPD {
 	public String chTitle(String pg, String newtitle) {
 		return title.matcher(pg).replaceFirst("<title>" + newtitle + "</title>");
 	}
-
-	@Override
+/*
 	public Response serve(IHTTPSession session) {
 		log.debug("URL Requested: {}", session.getUri());
 		String uri = session.getUri();
@@ -258,7 +305,7 @@ public class Webserver extends NanoHTTPD {
 		// 404
 		return newFixedLengthResponse(Status.NOT_FOUND, MIME_HTML, files.get("/404"));
 	}
-
+*/
 	public String parse(File f) throws IOException {
 		return (isNotHTML(f.getName()) ? "" : files.get("/header"))
 				+ FileUtils.readFileToString(f, Charset.forName("UTF-8"))
@@ -277,7 +324,7 @@ public class Webserver extends NanoHTTPD {
 		StringBuilder nodes = new StringBuilder();
 		String milestone = nodeInfo.getLatestMilestone();
 
-		return gf.formatTransaction(dat.replace("<$ver$>", nodeInfo.getAppName() + " " + nodeInfo.getAppVersion())
+		return (dat.replace("<$ver$>", nodeInfo.getAppName() + " " + nodeInfo.getAppVersion())
 				.replace("<$milestone$>",
 						"<a href=\"/hash/" + nodeInfo.getLatestMilestone() + "\">" + nodeInfo.getLatestMilestoneIndex()
 								+ "</a>")
@@ -288,7 +335,7 @@ public class Webserver extends NanoHTTPD {
 				.replace("<$cput$>", "" + nodeInfo.getJreAvailableProcessors())
 				.replace("<$memt$>", "" + readableFileSize(nodeInfo.getJreTotalMemory()))
 				.replace("<$lasttxns$>", nzb == null ? "" : nzb.genTblBody())
-				.replace("<$graph$>", files.get("/tanglegraph")), milestone);
+				.replace("<$graph$>", files.get("/tanglegraph")));
 	}
 
 	public Transaction getTxnFromHash(String hash) {
@@ -309,7 +356,7 @@ public class Webserver extends NanoHTTPD {
 		String branch = "<a href=\"/hash/" + txn.getBranchTransaction() + "\">" + txn.getBranchTransaction() + "</a>";
 
 		try {
-			return title.matcher(gf.formatTransaction(
+			return title.matcher((
 					files.get("/txn")
 							.replace("<$addrlink$>", addrlink).replace("<$hash$>", txn.getHash())
 							.replace("<$amt$>",
@@ -326,8 +373,8 @@ public class Webserver extends NanoHTTPD {
 							.replace("<$index$>", "" + (txn.getCurrentIndex()))
 							.replace("<$totalindex$>", "" + (txn.getLastIndex()))
 							.replace("<$wmag$>", "" + getWM(txn))
-							.replace("<$graph$>", files.get("/tanglegraph")),
-					txn.getHash())).replaceFirst("<title>Iota Transaction " + txn.getHash() + "</title>");
+							.replace("<$graph$>", files.get("/tanglegraph"))
+							)).replaceFirst("<title>Iota Transaction " + txn.getHash() + "</title>");
 		} catch (NoNodeInfoException e) {
             return "<h1>500 Internal Server Error</h1>\n"
                     + "Node is probably down, try again later. If stuff is still broken, scream at me on slack (@eukaryote) until I fix things.";
@@ -351,7 +398,10 @@ public class Webserver extends NanoHTTPD {
 	public static String formatAgo(long epochsec) {
 		long before = System.currentTimeMillis() / 1000 - epochsec;
 
-		if (before < 10)
+		if (before <= 0)
+			return "invalid";
+		
+		if (before < 3 && before > 0)
 			return "just now";
 
 		int sec = (int) (before % 60);

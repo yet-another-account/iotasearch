@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import jota.utils.Converter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j

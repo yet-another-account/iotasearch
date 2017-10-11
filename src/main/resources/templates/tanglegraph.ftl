@@ -1,0 +1,42 @@
+<#macro tanglegraph title="">
+<!-- Begin Graph -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.20.1/vis.min.js" integrity="sha256-RYaJ4iE/KS83QD7vIXEtspXvwSXd1Zj1mAuU+sCtt2Q=" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.20.1/vis.min.css" integrity="sha256-iq5ygGJ7021Pi7H5S+QAUXCPUfaBzfqeplbg/KlEssg=" crossorigin="anonymous" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.20.1/vis-network.min.css" integrity="sha256-tTIVWrgsLDcekkoaiqePYP86joMAiyp4KqEswPMmTfQ=" crossorigin="anonymous" />
+<p><div id="nodegraph" class="graph"></div></p>
+<script>
+
+var nodes = new vis.DataSet([
+${nodes}
+]);
+
+var edges = new vis.DataSet([
+${edges}
+]);
+
+var container = document.getElementById('nodegraph');
+
+var data = {
+    nodes: nodes,
+    edges: edges
+};
+
+
+var options = {
+	nodes: {
+        shape: 'dot',
+        size: 10,
+    },
+};
+
+var network = new vis.Network(container, data, options);
+
+    network.on("click", function (params) {
+    	if (params.nodes.length == 1) {
+    		var node = params.nodes[0];
+    		doSearch(node);
+    	}
+    });
+</script>
+<!-- End Graph -->
+</#macro>
