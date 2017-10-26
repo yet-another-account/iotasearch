@@ -10,7 +10,7 @@ repositories {
 }
 
 dependencies {
-    compile 'com.github.iotaledger:iota.lib.java:d5e536e'
+    compile 'com.github.iotaledger:iota.lib.java:08b8299'
     compile 'com.google.code.gson:gson:2.8.0'
     compile 'ch.qos.logback:logback-classic:1.2.3'
     compile 'com.github.eukaryote31:iota-confirmation-stat:2512470'
