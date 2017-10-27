@@ -14,7 +14,7 @@ public class SnapshotLoader {
 	public SnapshotLoader(File f) throws IOException {
 		List<String> lines = FileUtils.readLines(f, Charset.forName("UTF-8"));
 		for (String line : lines) {
-			String[] p = line.split(":", 2);
+			String[] p = line.split(";", 2);
 			snapshot.put(p[0], Long.parseLong(p[1]));
 		}
 	}
