@@ -1,1 +1,1 @@
-(cd "$(dirname "$0")"; run/bin/tangle-explorer) &
+(cd "$(dirname "$0")"; ./update; run/bin/tangle-explorer) &
