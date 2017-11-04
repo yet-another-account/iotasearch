@@ -48,8 +48,11 @@ public class HistorySearcher {
 
 	public List<Transaction> getTransactions(List<String> hashes) {
 		List<Transaction> txns = new ArrayList<>();
-		for(String hash : hashes)
-			txns.add(this.getTransaction(hash));
+		for(String hash : hashes) {
+			Transaction tx = this.getTransaction(hash);
+			if (tx != null)
+				txns.add(tx);
+		}
 		return txns;
 	}
 }
