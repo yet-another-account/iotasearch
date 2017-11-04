@@ -12,18 +12,23 @@ import java.util.TreeSet;
 
 import org.apache.commons.lang3.StringUtils;
 
+import eukaryote.iota.explorer.db.HistorySearcher;
 import jota.IotaAPI;
 import jota.model.Transaction;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class GraphFormatter {
 
 	IotaAPI api;
 	int truncatelen = 8;
 
 	final String[] colors = { "FE2F00", "F78700", "F0DB00", "AAEA00", "00DD00" };
+	private HistorySearcher hs;
 
-	public GraphFormatter(IotaAPI api) {
+	public GraphFormatter(IotaAPI api, HistorySearcher hs) {
 		this.api = api;
+		this.hs = hs;
 	}
 
 	public String formatTransaction(String pagehtml, String txnhash) {
@@ -43,7 +48,11 @@ public class GraphFormatter {
 		toadd.add(txnhash);
 
 		for (int i = 0; i < depth; i++) {
-			List<Transaction> newtxns = api.getTransactionsObjects(toadd.toArray(strarr));
+			String[] toaddarr = toadd.toArray(strarr);
+			List<Transaction> newtxns = hs.getTransactions(toadd);
+			
+			if(newtxns.isEmpty())
+				newtxns = api.getTransactionsObjects(toaddarr);
 
 			for (Transaction t : newtxns)
 				txns.putIfAbsent(t, i);

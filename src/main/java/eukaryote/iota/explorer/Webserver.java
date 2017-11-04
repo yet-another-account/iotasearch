@@ -30,12 +30,14 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.Future;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.RandomUtils;
 
 import eukaryote.iota.confstat.ConfirmationStat;
+import eukaryote.iota.explorer.db.HistorySearcher;
 import fi.iki.elonen.NanoHTTPD;
 import fi.iki.elonen.NanoHTTPD.Response.Status;
 import jota.IotaAPI;
@@ -56,6 +58,8 @@ public class Webserver extends NanoHTTPD {
 
 	GraphFormatter gf;
 	NZBundles nzb;
+	
+	HistorySearcher hs;
 	
 	SnapshotLoader sl;
 	
@@ -94,7 +98,7 @@ public class Webserver extends NanoHTTPD {
 		dateFormatGmt.setTimeZone(TimeZone.getTimeZone("GMT"));
 
 		String[] hosts = {
-				"10.128.0.4"
+				"node.lukaseder.de"
 				};
 
 		api = new IotaAPI.Builder().protocol("http").host(hosts[RandomUtils.nextInt(0, hosts.length)]).port("14265").build();
@@ -105,10 +109,14 @@ public class Webserver extends NanoHTTPD {
 
 		start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
 
-		gf = new GraphFormatter(api);
 		nzb = new NZBundles(this, api, new URI("ws://localhost:5557"));
 		stat = new ConfirmationStat(api);
 		sl = new SnapshotLoader(new File("snapshot"));
+		hs = new HistorySearcher(
+				FileUtils.readFileToString(new File("host.secret"), "UTF-8"),
+				FileUtils.readFileToString(new File("user.secret"), "UTF-8"),
+				FileUtils.readFileToString(new File("pass.secret"), "UTF-8"));
+		gf = new GraphFormatter(api, hs);
 	}
 
 	protected void updatePages() throws IOException {
@@ -182,22 +190,25 @@ public class Webserver extends NanoHTTPD {
 			if (hash.length() != 81 && hash.length() != 90)
 				return newFixedLengthResponse(files.get("/404"));
 
-			if (hash.endsWith("99"))
-				try {
-					// check if txn
-					List<Transaction> txns = api.getTransactionsObjects(new String[] { hash });
-
-					log.debug("txns: {}", txns);
-
-					if (!txns.isEmpty() || (txns.get(0).getHash()
-							.equals("999999999999999999999999999999999999999999999999999999999999999999999999999999999"))) {
-						return newFixedLengthResponse(formatTransaction(txns.get(0)));
-					}
-
-				} catch (IllegalAccessError | Exception e) {
-					log.error("Error:", e);
-					// invalid txn hash
+			try {
+				// check if txn
+				Transaction txnarch = hs.getTransaction(hash);
+				
+				if (txnarch != null) {
+					return newFixedLengthResponse(formatTransaction(txnarch));
 				}
+				
+				List<Transaction> txns = api.getTransactionsObjects(new String[] { hash });
+				
+				if (!txns.isEmpty() || (txns.get(0).getHash()
+						.equals("999999999999999999999999999999999999999999999999999999999999999999999999999999999"))) {
+					return newFixedLengthResponse(formatTransaction(txns.get(0)));
+				}
+
+			} catch (IllegalAccessError | Exception e) {
+				log.error("Error:", e);
+				// invalid txn hash
+			}
 
 			if (hash.length() != 90)
 				try {
@@ -300,13 +311,14 @@ public class Webserver extends NanoHTTPD {
 	 * FORMAT TRANSACTION
 	 */
 	public String formatTransaction(Transaction txn) {
-
+		log.info("fmt txn");
 		StringBuilder sb = new StringBuilder();
 
 		String addrlink = "<a href=\"/hash/" + txn.getAddress() + "\">" + txn.getAddress() + "</a>";
 		String bdllink = "<a href=\"/hash/" + txn.getBundle() + "\">" + txn.getBundle() + "</a>";
 		String trunk = "<a href=\"/hash/" + txn.getTrunkTransaction() + "\">" + txn.getTrunkTransaction() + "</a>";
 		String branch = "<a href=\"/hash/" + txn.getBranchTransaction() + "\">" + txn.getBranchTransaction() + "</a>";
+		log.info("fmt txn 2");
 
 		try {
 			return title.matcher(gf.formatTransaction(
@@ -319,9 +331,12 @@ public class Webserver extends NanoHTTPD {
 											// ... ago
 											+ " (" + formatAgo(txn.getTimestamp()) + " ago)")
 							
-							.replace("<$tag$>", txn.getTag().replaceFirst("9+$", "")).replace("<$nonce$>", txn.getNonce())
-							.replace("<$msgraw$>", txn.getSignatureFragments()).replace("<$branch$>", branch)
-							.replace("<$trunk$>", trunk).replace("<$bundle$>", bdllink)
+							.replace("<$tag$>", txn.getTag().replaceFirst("9+$", ""))
+							.replace("<$nonce$>", txn.getNonce())
+							.replace("<$msgraw$>", txn.getSignatureFragments())
+							.replace("<$branch$>", branch)
+							.replace("<$trunk$>", trunk)
+							.replace("<$bundle$>", bdllink)
 							.replace("<$stat$>", stat.statusOf(txn).toString())
 							.replace("<$index$>", "" + (txn.getCurrentIndex()))
 							.replace("<$totalindex$>", "" + (txn.getLastIndex()))
