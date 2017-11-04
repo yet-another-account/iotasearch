@@ -217,7 +217,7 @@ public class Webserver extends NanoHTTPD {
 			try {
 				
 				// redirect with checksum
-				if (hash.length() == 81) {
+				if (hash.length() == 81 && !hash.endsWith("999")) {
 					hash = Checksum.addChecksum(hash);
 					
 		            Response r = newFixedLengthResponse(Response.Status.REDIRECT, MIME_HTML, "");
