@@ -75,14 +75,14 @@ public class Webserver {
 	public Webserver(int port) throws IOException, URISyntaxException {
 		staticFiles.location("public");
 		port(port);
-		
+
 		// prevent node from overloading
 		threadPool(20);
-		
+
 		get("/", (req, res) -> {
 			return index;
 		});
-		
+
 		get("/hash/:hash", (req, res) -> {
 			return serve(req, res);
 		});
@@ -104,7 +104,10 @@ public class Webserver {
 		dateFormatGmt = new SimpleDateFormat("yyyy-MMM-dd HH:mm:ss");
 		dateFormatGmt.setTimeZone(TimeZone.getTimeZone("GMT"));
 
-		String[] hosts = { 	"node.iotasear.ch", };
+		String[] hosts = { "10.128.0.4" };
+
+		api = new IotaAPI.Builder().protocol("http").host(hosts[RandomUtils.nextInt(0, hosts.length)]).port("14265")
+				.build();
 
 		int nodeindex = 0;
 		do {
@@ -143,23 +146,23 @@ public class Webserver {
 
 		if (hash.length() != 81 && hash.length() != 90)
 			return files.get("/404");
-		
+
 		if (hash.length() == 81 && hash.endsWith("999"))
-		try {
-			// check if txn
-			List<Transaction> txns = api.getTransactionsObjects(new String[] { hash });
+			try {
+				// check if txn
+				List<Transaction> txns = api.getTransactionsObjects(new String[] { hash });
 
-			log.debug("txns: {}", txns);
+				log.debug("txns: {}", txns);
 
-			if (!txns.isEmpty() || (txns.get(0).getHash()
-					.equals("999999999999999999999999999999999999999999999999999999999999999999999999999999999"))) {
-				return formatTransaction(txns.get(0));
+				if (!txns.isEmpty() || (txns.get(0).getHash()
+						.equals("999999999999999999999999999999999999999999999999999999999999999999999999999999999"))) {
+					return formatTransaction(txns.get(0));
+				}
+
+			} catch (IllegalAccessError | Exception e) {
+				log.error("Error:", e);
+				// invalid txn hash
 			}
-
-		} catch (IllegalAccessError | Exception e) {
-			log.error("Error:", e);
-			// invalid txn hash
-		}
 
 		if (hash.length() != 90)
 			try {
@@ -188,7 +191,6 @@ public class Webserver {
 
 			// check if address
 			FindTransactionResponse ftba = api.findTransactionsByAddresses(hash);
-
 
 			long presnapshotval = sl.getPreSnapshot(hash.substring(0, 81));
 
@@ -231,8 +233,7 @@ public class Webserver {
 	}
 
 	public String parse(File f) throws IOException {
-		return (files.get("/header"))
-				+ FileUtils.readFileToString(f, Charset.forName("UTF-8"))
+		return (files.get("/header")) + FileUtils.readFileToString(f, Charset.forName("UTF-8"))
 				+ (files.get("/footer"));
 	}
 
