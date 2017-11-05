@@ -77,7 +77,7 @@ public class Webserver {
 		port(port);
 
 		// prevent node from overloading
-		threadPool(20);
+		threadPool(16);
 
 		get("/", (req, res) -> {
 			return index;
