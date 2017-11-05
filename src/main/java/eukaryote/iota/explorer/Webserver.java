@@ -36,8 +36,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.RandomUtils;
 
 import eukaryote.iota.confstat.ConfirmationStat;
-import fi.iki.elonen.NanoHTTPD;
-import fi.iki.elonen.NanoHTTPD.Response.Status;
 import jota.IotaAPI;
 import jota.dto.response.FindTransactionResponse;
 import jota.dto.response.GetBundleResponse;
@@ -48,33 +46,46 @@ import jota.utils.Checksum;
 import jota.utils.Converter;
 import jota.utils.IotaUnitConverter;
 import lombok.extern.slf4j.Slf4j;
+import spark.Request;
+import spark.Response;
+
+import static spark.Spark.*;
 
 @Slf4j
-public class Webserver extends NanoHTTPD {
+public class Webserver {
 	Map<String, String> files = new HashMap<>();
 	IotaAPI api;
 
 	GraphFormatter gf;
 	NZBundles nzb;
-	
+
 	SnapshotLoader sl;
-	
+
 	int nzbattempts = 0;
-	
+
 	ConfirmationStat stat;
 
 	double rate;
 
-	public static final String MIME_PLAINTEXT = "text/plain", MIME_HTML = "text/html",
-			MIME_JS = "application/javascript", MIME_CSS = "text/css", MIME_PNG = "image/png",
-			MIME_DEFAULT_BINARY = "application/octet-stream", MIME_XML = "text/xml", MIME_ICO = "text/x-icon";
 	private SimpleDateFormat dateFormatGmt;
 	private URL cmciotaprice;
 
-	String index = "";
+	String index = "Please wait";
 
 	public Webserver(int port) throws IOException, URISyntaxException {
-		super(port);
+		staticFiles.location("public");
+		port(port);
+		
+		// prevent node from overloading
+		threadPool(20);
+		
+		get("/", (req, res) -> {
+			return index;
+		});
+		
+		get("/hash/:hash", (req, res) -> {
+			return serve(req, res);
+		});
 
 		Locale.setDefault(Locale.US);
 
@@ -84,7 +95,7 @@ public class Webserver extends NanoHTTPD {
 		TimerTask updprice = new UpdThread(this);
 		Timer timer = new Timer();
 		timer.schedule(updprice, 3 * 1000, 30 * 1000);
-		
+
 		// update price every 2m
 		TimerTask updfast = new FastUpdThread(this);
 		Timer timer2 = new Timer();
@@ -93,22 +104,102 @@ public class Webserver extends NanoHTTPD {
 		dateFormatGmt = new SimpleDateFormat("yyyy-MMM-dd HH:mm:ss");
 		dateFormatGmt.setTimeZone(TimeZone.getTimeZone("GMT"));
 
-		String[] hosts = {
-				"service.iotasupport.com"
-				};
+		String[] hosts = { 	"node.iotasear.ch", };
 
-		api = new IotaAPI.Builder().protocol("http").host(hosts[RandomUtils.nextInt(0, hosts.length)]).port("14265").build();
-
+		int nodeindex = 0;
+		do {
+			try {
+				api = new IotaAPI.Builder().protocol("http").host(hosts[nodeindex++]).port("14265").build();
+			} catch (Exception e) {
+				e.printStackTrace();
+				api = null;
+			}
+		} while (api == null);
+		log.info("node info {}", api.getNodeInfo());
 		updatePages();
 
 		// log.info("${}/Mi", rate);
 
-		start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
-
 		gf = new GraphFormatter(api);
-		nzb = new NZBundles(this, api, new URI("ws://localhost:5557"));
+		nzb = new NZBundles(this, api, new URI("ws://tangle.blox.pm:8080"));
 		stat = new ConfirmationStat(api);
 		sl = new SnapshotLoader(new File("snapshot"));
+	}
+
+	private String serve(Request req, Response res) {
+
+		String hash = req.params("hash");
+
+		log.info("Requested hash {}", hash);
+
+		if (hash.equals(coordinator)) {
+			GetNodeInfoResponse nodeInfo = api.getNodeInfo();
+			return files.get("/coo").replace("<$milestone$>", nodeInfo.getLatestMilestone())
+					.replace("<$milestoneindex$>", "" + nodeInfo.getLatestMilestoneIndex());
+		}
+
+		if (hash.equals("999999999999999999999999999999999999999999999999999999999999999999999999999999999"))
+			return files.get("invalidhash");
+
+		if (hash.length() != 81 && hash.length() != 90)
+			return files.get("/404");
+		
+		if (hash.length() == 81 && hash.endsWith("999"))
+		try {
+			// check if txn
+			List<Transaction> txns = api.getTransactionsObjects(new String[] { hash });
+
+			log.debug("txns: {}", txns);
+
+			if (!txns.isEmpty() || (txns.get(0).getHash()
+					.equals("999999999999999999999999999999999999999999999999999999999999999999999999999999999"))) {
+				return formatTransaction(txns.get(0));
+			}
+
+		} catch (IllegalAccessError | Exception e) {
+			log.error("Error:", e);
+			// invalid txn hash
+		}
+
+		if (hash.length() != 90)
+			try {
+				// check if bundle
+				FindTransactionResponse gbr = api.findTransactionsByBundles(hash);
+
+				log.debug("grb.len={}", gbr.getHashes().length);
+
+				if (gbr.getHashes().length != 0)
+					return formatBundle(hash, gbr.getHashes());
+
+			} catch (IllegalAccessError | Exception e) {
+				log.debug("Error:", e);
+				// invalid bdl hash
+			}
+
+		try {
+
+			// redirect with checksum
+			if (hash.length() == 81 && !hash.endsWith("999")) {
+				hash = Checksum.addChecksum(hash);
+
+				res.redirect("/hash/" + hash);
+				return "";
+			}
+
+			// check if address
+			FindTransactionResponse ftba = api.findTransactionsByAddresses(hash);
+
+
+			long presnapshotval = sl.getPreSnapshot(hash.substring(0, 81));
+
+			if (ftba.getHashes().length != 0 || presnapshotval != 0)
+				return formatAddr(hash, ftba.getHashes(), presnapshotval);
+		} catch (IllegalAccessError | Exception e) {
+			log.debug("Error:", e);
+			// invalid address hash
+		}
+
+		return files.get("invalidhash");
 	}
 
 	protected void updatePages() throws IOException {
@@ -124,157 +215,31 @@ public class Webserver extends NanoHTTPD {
 		files.put("/bundle", parse(new File("html/bundle.html")));
 		files.put("/coo", parse(new File("html/coo.html")));
 		files.put("/404", parse(new File("html/404.html")));
-		files.put("/invalidhash", parse(new File("html/invalidhash.html")).replace("<!--noindexmeta-->",
+		files.put("invalidhash", parse(new File("html/invalidhash.html")).replace("<!--noindexmeta-->",
 				"<meta name=\"robots\" content=\"noindex\">"));
 		files.put("/tanglegraph",
 				FileUtils.readFileToString(new File("html/tanglegraph.html"), Charset.forName("UTF-8")));
-		
+
 		// google verification
 
 		files.put("/google5c70ae64d13d35e2.html", "google-site-verification: google5c70ae64d13d35e2.html");
 
-		// opensearch xml
-		files.put("/opensearch.xml", FileUtils.readFileToString(new File("html/opensearch.xml"), Charset.forName("UTF-8")));
-		
-		addDir("html/css");
-		addDir("html/js");
-		addDir("html/fonts");
-
 	}
-	
+
 	public String chTitle(String pg, String newtitle) {
 		return title.matcher(pg).replaceFirst("<title>" + newtitle + "</title>");
 	}
 
-	@Override
-	public Response serve(IHTTPSession session) {
-		log.debug("URL Requested: {}", session.getUri());
-		String uri = session.getUri();
-
-		// if (uri.equals("/test"))
-		// return newFixedLengthResponse(nzb.queue.toString());
-
-		// root
-		if (uri.equals("/")) {
-			if (index.isEmpty())
-				return newFixedLengthResponse(Status.INTERNAL_ERROR, MIME_HTML, "<h1>Please wait, server is starting</h1>");
-			return newFixedLengthResponse(index);
-		} else if (uri.startsWith("/hash")) {
-			// get hash
-			String[] split = uri.split("/", 3);
-
-			if (split.length != 3)
-				return newFixedLengthResponse(files.get("/404"));
-
-			String hash = split[2];
-
-			log.info("Requested hash {}", hash);
-
-			if (hash.equals(coordinator)) {
-				GetNodeInfoResponse nodeInfo = api.getNodeInfo();
-				return newFixedLengthResponse(files.get("/coo").replace("<$milestone$>", nodeInfo.getLatestMilestone())
-						.replace("<$milestoneindex$>", "" + nodeInfo.getLatestMilestoneIndex()));
-			}
-			
-			if (hash.equals("999999999999999999999999999999999999999999999999999999999999999999999999999999999"))
-				return newFixedLengthResponse(files.get("/invalidhash"));
-			
-			if (hash.length() != 81 && hash.length() != 90)
-				return newFixedLengthResponse(files.get("/404"));
-
-			if (hash.endsWith("99"))
-				try {
-					// check if txn
-					List<Transaction> txns = api.getTransactionsObjects(new String[] { hash });
-
-					log.debug("txns: {}", txns);
-
-					if (!txns.isEmpty() || (txns.get(0).getHash()
-							.equals("999999999999999999999999999999999999999999999999999999999999999999999999999999999"))) {
-						return newFixedLengthResponse(formatTransaction(txns.get(0)));
-					}
-
-				} catch (IllegalAccessError | Exception e) {
-					log.error("Error:", e);
-					// invalid txn hash
-				}
-
-			if (hash.length() != 90)
-				try {
-					// check if bundle
-					FindTransactionResponse gbr = api.findTransactionsByBundles(hash);
-
-					log.debug("grb.len={}", gbr.getHashes().length);
-
-					if (gbr.getHashes().length != 0)
-						return newFixedLengthResponse(formatBundle(hash, gbr.getHashes()));
-
-				} catch (IllegalAccessError | Exception e) {
-					log.debug("Error:", e);
-					// invalid bdl hash
-				}
-
-			try {
-				
-				// redirect with checksum
-				if (hash.length() == 81 && !hash.endsWith("999")) {
-					hash = Checksum.addChecksum(hash);
-					
-		            Response r = newFixedLengthResponse(Response.Status.REDIRECT, MIME_HTML, "");
-		            r.addHeader("Location", "/hash/" + hash);
-		            return r;	
-				}
-				
-				// check if address
-				FindTransactionResponse ftba = api.findTransactionsByAddresses(hash);
-
-				log.debug("Hashreq Duration: {}", ftba.getDuration());
-				
-				long presnapshotval = sl.getPreSnapshot(hash.substring(0, 81));
-				
-				log.info("addr");
-				if (ftba.getHashes().length != 0 || presnapshotval != 0)
-					return newFixedLengthResponse(formatAddr(hash, ftba.getHashes(), presnapshotval));
-			} catch (IllegalAccessError | Exception e) {
-				log.debug("Error:", e);
-				// invalid address hash
-			}
-
-			return newFixedLengthResponse(files.get("/invalidhash"));
-		}
-
-		if (files.containsKey(uri)) {
-			if (uri.endsWith(".js"))
-				return newFixedLengthResponse(Status.OK, MIME_JS, files.get(uri));
-			if (uri.endsWith(".css"))
-				return newFixedLengthResponse(Status.OK, MIME_CSS, files.get(uri));
-			if (uri.endsWith(".png"))
-				return newFixedLengthResponse(Status.OK, MIME_PNG, files.get(uri));
-			if (uri.endsWith(".xml"))
-				return newFixedLengthResponse(Status.OK, MIME_XML, files.get(uri));
-			else
-				return newFixedLengthResponse(files.get(uri));
-		}
-		// 404
-		return newFixedLengthResponse(Status.NOT_FOUND, MIME_HTML, files.get("/404"));
-	}
-
 	public String parse(File f) throws IOException {
-		return (isNotHTML(f.getName()) ? "" : files.get("/header"))
+		return (files.get("/header"))
 				+ FileUtils.readFileToString(f, Charset.forName("UTF-8"))
-				+ (isNotHTML(f.getName()) ? "" : files.get("/footer"));
-	}
-
-	private boolean isNotHTML(String fname) {
-		return fname.endsWith(".js") || fname.endsWith(".css") || fname.contains("glyphicons")
-				|| fname.endsWith(".png");
+				+ (files.get("/footer"));
 	}
 
 	public String formatIndex(String dat) {
 
 		GetNodeInfoResponse nodeInfo = api.getNodeInfo();
 
-		StringBuilder nodes = new StringBuilder();
 		String milestone = nodeInfo.getLatestMilestone();
 
 		return gf.formatTransaction(dat.replace("<$ver$>", nodeInfo.getAppName() + " " + nodeInfo.getAppVersion())
@@ -286,7 +251,7 @@ public class Webserver extends NanoHTTPD {
 								+ nodeInfo.getLatestSolidSubtangleMilestoneIndex() + "</a>")
 				.replace("<$neighbors$>", "" + nodeInfo.getNeighbors()).replace("<$tips$>", "" + nodeInfo.getTips())
 				.replace("<$cput$>", "" + nodeInfo.getJreAvailableProcessors())
-				.replace("<$memt$>", "" + readableFileSize(nodeInfo.getJreTotalMemory()))
+				.replace("<$memt$>", "" + FileUtils.byteCountToDisplaySize(nodeInfo.getJreTotalMemory()))
 				.replace("<$lasttxns$>", nzb == null ? "" : nzb.genTblBody())
 				.replace("<$graph$>", files.get("/tanglegraph")), milestone);
 	}
@@ -294,8 +259,9 @@ public class Webserver extends NanoHTTPD {
 	public Transaction getTxnFromHash(String hash) {
 		return api.getTransactionsObjects(new String[] { hash }).get(0);
 	}
+
 	static final Pattern title = Pattern.compile("<title>.+</title>");
-	
+
 	/*
 	 * FORMAT TRANSACTION
 	 */
@@ -309,45 +275,51 @@ public class Webserver extends NanoHTTPD {
 		String branch = "<a href=\"/hash/" + txn.getBranchTransaction() + "\">" + txn.getBranchTransaction() + "</a>";
 
 		try {
-			return title.matcher(gf.formatTransaction(
-					files.get("/txn")
-							.replace("<$addrlink$>", addrlink).replace("<$hash$>", txn.getHash())
-							.replace("<$amt$>",
-									IotaUnitConverter.convertRawIotaAmountToDisplayText(Math.abs(txn.getValue()), true))
-							.replace("<$time$>",
-									dateFormatGmt.format(new Date(txn.getTimestamp() * 1000))
-											// ... ago
-											+ " (" + formatAgo(txn.getTimestamp()) + " ago)")
-							
-							.replace("<$tag$>", txn.getTag().replaceFirst("9+$", "")).replace("<$nonce$>", txn.getNonce())
-							.replace("<$msgraw$>", txn.getSignatureFragments()).replace("<$branch$>", branch)
-							.replace("<$trunk$>", trunk).replace("<$bundle$>", bdllink)
-							.replace("<$stat$>", stat.statusOf(txn).toString())
-							.replace("<$index$>", "" + (txn.getCurrentIndex()))
-							.replace("<$totalindex$>", "" + (txn.getLastIndex()))
-							.replace("<$wmag$>", "" + getWM(txn))
-							.replace("<$graph$>", files.get("/tanglegraph")),
-					txn.getHash())).replaceFirst("<title>Iota Transaction " + txn.getHash() + "</title>");
+			return title
+					.matcher(
+							gf.formatTransaction(
+									files.get("/txn").replace("<$addrlink$>", addrlink)
+											.replace("<$hash$>", txn.getHash())
+											.replace("<$amt$>",
+													IotaUnitConverter.convertRawIotaAmountToDisplayText(
+															Math.abs(txn.getValue()), true))
+											.replace("<$time$>",
+													dateFormatGmt.format(new Date(txn.getTimestamp() * 1000))
+															// ... ago
+															+ " (" + formatAgo(txn.getTimestamp()) + " ago)")
+
+											.replace("<$tag$>", txn.getTag().replaceFirst("9+$", ""))
+											.replace("<$nonce$>", txn.getNonce())
+											.replace("<$msgraw$>", txn.getSignatureFragments())
+											.replace("<$branch$>", branch).replace("<$trunk$>", trunk)
+											.replace("<$bundle$>", bdllink)
+											.replace("<$stat$>", stat.statusOf(txn).toString())
+											.replace("<$index$>", "" + (txn.getCurrentIndex()))
+											.replace("<$totalindex$>", "" + (txn.getLastIndex()))
+											.replace("<$wmag$>", "" + getWM(txn))
+											.replace("<$graph$>", files.get("/tanglegraph")),
+									txn.getHash()))
+					.replaceFirst("<title>Iota Transaction " + txn.getHash() + "</title>");
 		} catch (NoNodeInfoException e) {
-            return "<h1>500 Internal Server Error</h1>\n"
-                    + "Node is probably down, try again later. If stuff is still broken, scream at me on slack (@eukaryote) until I fix things.";
-        }
+			return "<h1>500 Internal Server Error</h1>\n"
+					+ "Node is probably down, try again later. If stuff is still broken, scream at me on slack (@eukaryote) until I fix things.";
+		}
 	}
 
 	private static int getWM(Transaction txn) {
 		int ret = 0;
-		
+
 		String hash = txn.getHash();
-		
+
 		int[] trits = Converter.trits(hash);
-		
+
 		for (int i = trits.length - 1; i >= 0; i--, ret++)
 			if (trits[i] != 0)
 				break;
-		
+
 		return ret;
 	}
-	
+
 	public static String formatAgo(long epochsec) {
 		long before = System.currentTimeMillis() / 1000 - epochsec;
 
@@ -399,13 +371,11 @@ public class Webserver extends NanoHTTPD {
 				return 1;
 			} else {
 				return 0;
-				
+
 				/*
-				if (txn.getTimestamp() + threshold > System.currentTimeMillis() / 1000)
-					return 0;
-				else
-					return -1;
-					*/
+				 * if (txn.getTimestamp() + threshold > System.currentTimeMillis() / 1000)
+				 * return 0; else return -1;
+				 */
 			}
 		} catch (Exception e) {
 			log.error("err", e);
@@ -464,8 +434,8 @@ public class Webserver extends NanoHTTPD {
 		inputs.append("\n</tbody></table>");
 		outputs.append("\n</tbody></table>");
 
-		return title.matcher(files.get("/bundle").replace("<$inputs$>", inputs.toString()).replace("<$outputs$>", outputs.toString()))
-				.replaceFirst("<title>IOTA Bundle " + hash + "</title>");
+		return title.matcher(files.get("/bundle").replace("<$inputs$>", inputs.toString()).replace("<$outputs$>",
+				outputs.toString())).replaceFirst("<title>IOTA Bundle " + hash + "</title>");
 	}
 
 	String cpybtn = "<button class=\"btn\" data-clipboard-target=\"#hashdisp\">"
@@ -485,18 +455,19 @@ public class Webserver extends NanoHTTPD {
 
 		sb.append("<div class=\"row\">");
 		sb.append("<div class=\"col-lg-3 col-md-4\"> <div id=\"qr\" class=\"text-center\"></div>");
-		sb.append("</div>");	// /col-lg-2
+		sb.append("</div>"); // /col-lg-2
 		sb.append("<div class=\"col-lg-9 col-md-8\">");
-		
+
 		sb.append("<table class=\"table\">");
 
 		sb.append("<tr><td>Address: </td><td class=\"hashtd\"> <span id=\"hashdisp\">" + addr.substring(0, 81)
-		+ "<span title=\"Checksum\" id=\"addr-checksum\" class=\"text-muted\">" + addr.substring(81) + "</span></span></td></tr>");
+				+ "<span title=\"Checksum\" id=\"addr-checksum\" class=\"text-muted\">" + addr.substring(81)
+				+ "</span></span></td></tr>");
 
 		long bal = Long.parseLong(api.getBalances(1, new String[] { addr }).getBalances()[0]);
 
 		sb.append("<tr><td>Final Balance: </td><td>" + IotaUnitConverter.convertRawIotaAmountToDisplayText(bal, true)
-		+ "</td></tr>");
+				+ "</td></tr>");
 
 		// add usd val
 		double usdval = (bal * rate / 1000000);
@@ -506,8 +477,8 @@ public class Webserver extends NanoHTTPD {
 		sb.append("<tr><td>Number of Transactions: </td><td>" + hashes.length + "</td></tr>");
 		sb.append("</table>");
 
-		sb.append("</div>");	// /col-lg-10
-		sb.append("</div>");	// /row
+		sb.append("</div>"); // /col-lg-10
+		sb.append("</div>"); // /row
 
 		sb.append("<table class=\"table table-striped table-hover\">");
 
@@ -527,36 +498,34 @@ public class Webserver extends NanoHTTPD {
 
 		});
 
-		log.debug("txnobjs.len={}", txnobjs.size());
-
 		sb.append(
 				"<thead><tr><th>Age</th><th>Status</th><th>Transaction Hash</th><th>Bundle Hash</th><th>Tag</th><th></th><th>Amount</th></tr></thead>");
 
 		sb.append("<tbody>");
-		
+
 		Set<String> confirmedbdls = new HashSet<>(32);
 		Map<String, Integer> confirmed = new HashMap<>(32);
-		
+
 		Map<String, Integer> unconfirmed = new HashMap<>(32);
-		
+
 		for (Transaction txn : txnobjs) {
 			int num = getConfirmedNum(txn);
-			
+
 			confirmed.put(txn.getHash(), num);
-			
+
 			if (num != 1) {
 				unconfirmed.compute(txn.getBundle(), (key, oldval) -> {
 					return oldval == null ? 1 : oldval + 1;
 				});
 			}
-			
+
 			if (num == 1)
 				confirmedbdls.add(txn.getBundle());
 		}
-		
+
 		for (Transaction txn : txnobjs) {
 			int num = confirmed.get(txn.getHash());
-			
+
 			if (num == 0) {
 				sb.append("<tr class=\"danger\">");
 			} else if (num == 1) {
@@ -564,11 +533,11 @@ public class Webserver extends NanoHTTPD {
 			} else {
 				sb.append("<tr class=\"warning\">");
 			}
-			
+
 			// skip if not confirmed but bundle is confirmed
 			if (num != 1 && confirmedbdls.contains(txn.getBundle()))
 				continue;
-			
+
 			sb.append("<td>");
 			sb.append(formatAgo(txn.getTimestamp()));
 			sb.append("</td>");
@@ -597,44 +566,27 @@ public class Webserver extends NanoHTTPD {
 			sb.append("</tr>");
 			if (num == 1 && unconfirmed.containsKey(txn.getBundle())) {
 				// main, confirmed tx
-				
-				
+
 				int txncount = unconfirmed.get(txn.getBundle());
-				sb.append("<tr><td colspan=\"5\">&emsp;<i class=\"fa fa-level-up fa-rotate-90\"></i>&emsp;... " + txncount + " more duplicate unconfirmed transaction"
-						+ (txncount == 1 ? "" : "s") + " (probably reattaches)</td></tr>");
+				sb.append("<tr><td colspan=\"5\">&emsp;<i class=\"fa fa-level-up fa-rotate-90\"></i>&emsp;... "
+						+ txncount + " more duplicate unconfirmed transaction" + (txncount == 1 ? "" : "s")
+						+ " (probably reattaches)</td></tr>");
 			}
 		}
-		
-		log.debug("pval {}", presnapshotval);
-		
+
 		// snapshot
 		if (presnapshotval != 0) {
 			sb.append("<tr><td colspan = \"5\" class=\"text-center\">Snapshot</td>"
 					+ "<td><span class=\"label label-success\">IN</span></td><td>"
-					+ IotaUnitConverter.convertRawIotaAmountToDisplayText(presnapshotval, true)
-					+ "</td>");
+					+ IotaUnitConverter.convertRawIotaAmountToDisplayText(presnapshotval, true) + "</td>");
 		}
-		
+
 		sb.append("</tbody>");
 
 		sb.append("</table>");
 
-		log.debug("Built table");
-
-		return title.matcher(
-				files.get("/addr").replace("<$addr$>", addr).replace("<$table$>", sb.toString())).replaceFirst("<title>IOTA Address " + addr + "</title>");
-	}
-
-	public void addDir(String dir) throws IOException {
-		File fdir = new File(dir);
-
-		for (File fn : fdir.listFiles()) {
-			String fnorm = "/" + dir.substring("/html".length()) + "/" + fn.getName();
-			String fcont = parse(fn);
-
-			files.put(fnorm, fcont);
-			log.debug("Adding {}", fnorm);
-		}
+		return title.matcher(files.get("/addr").replace("<$addr$>", addr).replace("<$table$>", sb.toString()))
+				.replaceFirst("<title>IOTA Address " + addr + "</title>");
 	}
 
 	public void updatePrice() throws IOException {
@@ -649,16 +601,5 @@ public class Webserver extends NanoHTTPD {
 				}
 			}
 		}
-	}
-
-	static DecimalFormat fmt = new DecimalFormat("#,##0.#");
-	
-
-	public static String readableFileSize(long size) {
-		if (size <= 0)
-			return "0";
-		final String[] units = new String[] { "B", "kB", "MB", "GB", "TB" };
-		int digitGroups = (int) (Math.log10(size) / Math.log10(1024));
-		return fmt.format(size / Math.pow(1024, digitGroups)) + " " + units[digitGroups];
 	}
 }
