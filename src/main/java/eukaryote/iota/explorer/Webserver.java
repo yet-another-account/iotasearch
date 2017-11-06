@@ -109,7 +109,7 @@ public class Webserver {
 		updatePages();
 		
 		gf = new GraphFormatter(api);
-		nzb = new NZBundles(this, api, new URI("ws://localhost:1955"));
+		nzb = new NZBundles(this, api, new URI("ws://tangle.blox.pm:8080"));
 		stat = new ConfirmationStat(api);
 		sl = new SnapshotLoader(new File("snapshot"));
 	}
