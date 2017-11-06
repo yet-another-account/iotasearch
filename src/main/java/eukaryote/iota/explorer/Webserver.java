@@ -94,7 +94,7 @@ public class Webserver {
 		dateFormatGmt = new SimpleDateFormat("yyyy-MMM-dd HH:mm:ss");
 		dateFormatGmt.setTimeZone(TimeZone.getTimeZone("GMT"));
 
-		String[] hosts = { "node01.iotatoken.nl" };
+		String[] hosts = { "10.128.0.4" };
 
 		int nodeindex = 0;
 		do {
@@ -109,7 +109,7 @@ public class Webserver {
 		updatePages();
 		
 		gf = new GraphFormatter(api);
-		nzb = new NZBundles(this, api, new URI("ws://tangle.blox.pm:8080"));
+		nzb = new NZBundles(this, api, new URI("ws://localhost:1955"));
 		stat = new ConfirmationStat(api);
 		sl = new SnapshotLoader(new File("snapshot"));
 	}
