@@ -2,27 +2,19 @@ package eukaryote.iota.explorer;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.ZoneOffset;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -33,12 +25,10 @@ import java.util.TimerTask;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.RandomUtils;
 
 import eukaryote.iota.confstat.ConfirmationStat;
 import jota.IotaAPI;
 import jota.dto.response.FindTransactionResponse;
-import jota.dto.response.GetBundleResponse;
 import jota.dto.response.GetNodeInfoResponse;
 import jota.error.NoNodeInfoException;
 import jota.model.Transaction;
@@ -104,10 +94,7 @@ public class Webserver {
 		dateFormatGmt = new SimpleDateFormat("yyyy-MMM-dd HH:mm:ss");
 		dateFormatGmt.setTimeZone(TimeZone.getTimeZone("GMT"));
 
-		String[] hosts = { "10.128.0.4" };
-
-		api = new IotaAPI.Builder().protocol("http").host(hosts[RandomUtils.nextInt(0, hosts.length)]).port("14265")
-				.build();
+		String[] hosts = { "node01.iotatoken.nl" };
 
 		int nodeindex = 0;
 		do {
@@ -120,9 +107,7 @@ public class Webserver {
 		} while (api == null);
 		log.info("node info {}", api.getNodeInfo());
 		updatePages();
-
-		// log.info("${}/Mi", rate);
-
+		
 		gf = new GraphFormatter(api);
 		nzb = new NZBundles(this, api, new URI("ws://tangle.blox.pm:8080"));
 		stat = new ConfirmationStat(api);
@@ -238,7 +223,6 @@ public class Webserver {
 	}
 
 	public String formatIndex(String dat) {
-
 		GetNodeInfoResponse nodeInfo = api.getNodeInfo();
 
 		String milestone = nodeInfo.getLatestMilestone();
