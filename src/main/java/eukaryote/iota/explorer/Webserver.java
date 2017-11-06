@@ -258,7 +258,9 @@ public class Webserver {
 		String bdllink = "<a href=\"/hash/" + txn.getBundle() + "\">" + txn.getBundle() + "</a>";
 		String trunk = "<a href=\"/hash/" + txn.getTrunkTransaction() + "\">" + txn.getTrunkTransaction() + "</a>";
 		String branch = "<a href=\"/hash/" + txn.getBranchTransaction() + "\">" + txn.getBranchTransaction() + "</a>";
-
+		
+		boolean newstat = false;
+		
 		try {
 			return title
 					.matcher(
@@ -278,7 +280,7 @@ public class Webserver {
 											.replace("<$msgraw$>", txn.getSignatureFragments())
 											.replace("<$branch$>", branch).replace("<$trunk$>", trunk)
 											.replace("<$bundle$>", bdllink)
-											.replace("<$stat$>", stat.statusOf(txn).toString())
+											.replace("<$stat$>", newstat ? stat.statusOf(txn).toString() : getConfirmed(txn))
 											.replace("<$index$>", "" + (txn.getCurrentIndex()))
 											.replace("<$totalindex$>", "" + (txn.getLastIndex()))
 											.replace("<$wmag$>", "" + getWM(txn))
