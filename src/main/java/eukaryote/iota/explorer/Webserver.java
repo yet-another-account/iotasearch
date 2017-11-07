@@ -405,6 +405,7 @@ public class Webserver {
 
 		int inputcnt = 0;
 		int outputcnt = 0;
+		long val = 0;
 		
 		for (Transaction t : txnobjs) {
 			StringBuilder sb = outputs;
@@ -414,6 +415,7 @@ public class Webserver {
 				inputcnt++;
 			} else {
 				outputcnt++;
+				val += t.getValue();
 			}
 
 			sb.append("<tr><td class=\"monospace\">" + "<a href=\"/hash/" + t.getHash() + "\">"
@@ -433,6 +435,7 @@ public class Webserver {
 				.replace("<$outputcount$>", ""+outputcnt)
 				.replace("<$hash$>", hash)
 				.replace("<$stat$>", getConfirmed(txnobjs.get(0)))
+				.replace("<$amt$>", IotaUnitConverter.convertRawIotaAmountToDisplayText(val, true))
 				.replace("<$time$>", dateFormatGmt.format(new Date(txnobjs.get(0).getTimestamp() * 1000))
 															// ... ago
 															+ " (" + formatAgo(txnobjs.get(0).getTimestamp()) + " ago)");	
