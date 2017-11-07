@@ -32,7 +32,7 @@ public class WayBackDB implements IWayBack {
 
 	@Override
 	public Transaction getTransaction(String hash) {
-		Transaction txn = dbinterface.getTransaction(hash);
+		Transaction txn = dbinterface.getTransaction(hash.substring(0, 81));
 		return txn;
 	}
 

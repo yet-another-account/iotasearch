@@ -403,16 +403,22 @@ public class Webserver {
 
 		});
 
+		int inputcnt = 0;
+		int outputcnt = 0;
+		
 		for (Transaction t : txnobjs) {
 			StringBuilder sb = outputs;
 			if (t.getValue() < 0) {
 				// input
 				sb = inputs;
+				inputcnt++;
+			} else {
+				outputcnt++;
 			}
 
-			sb.append("<tr><td class=\"monospace\">" + "<a href=\"/transaction/" + t.getHash() + "\">"
+			sb.append("<tr><td class=\"monospace\">" + "<a href=\"/hash/" + t.getHash() + "\">"
 					+ t.getHash().substring(0, 15) + "&hellip;</a></td>");
-			sb.append("</td><td class=\"monospace\"><a href=\"/address/" + t.getAddress() + "\">"
+			sb.append("</td><td class=\"monospace\"><a href=\"/hash/" + t.getAddress() + "\">"
 					+ t.getAddress().substring(0, 15) + "&hellip;</a></td>");
 			sb.append("<td>" + IotaUnitConverter.convertRawIotaAmountToDisplayText(Math.abs(t.getValue()), true)
 					+ "</td></tr>\n");
@@ -422,7 +428,14 @@ public class Webserver {
 		outputs.append("\n</tbody></table>");
 
 		return title.matcher(files.get("/bundle").replace("<$inputs$>", inputs.toString()).replace("<$outputs$>",
-				outputs.toString())).replaceFirst("<title>IOTA Bundle " + hash + "</title>");
+				outputs.toString())).replaceFirst("<title>IOTA Bundle " + hash + "</title>")
+				.replace("<$inputcount$>", ""+inputcnt)
+				.replace("<$outputcount$>", ""+outputcnt)
+				.replace("<$hash$>", hash)
+				.replace("<$stat$>", getConfirmed(txnobjs.get(0)))
+				.replace("<$time$>", dateFormatGmt.format(new Date(txnobjs.get(0).getTimestamp() * 1000))
+															// ... ago
+															+ " (" + formatAgo(txnobjs.get(0).getTimestamp()) + " ago)");	
 	}
 
 	String cpybtn = "<button class=\"btn\" data-clipboard-target=\"#hashdisp\">"
