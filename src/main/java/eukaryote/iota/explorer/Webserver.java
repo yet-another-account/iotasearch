@@ -475,7 +475,8 @@ public class Webserver {
 		sb.append(
 				"<tr><td>USD Value: </td><td>" + ((usdval < 0.01 && usdval > 0) ? "<$0.01" : (formatter.format(usdval)))
 						+ " (@ $" + rate + "/Mi)</td></tr>");
-		sb.append("<tr><td>Number of Transactions: </td><td>" + hashes.length + "</td></tr>");
+		sb.append("<tr><td>Number of Transactions: </td><td>" + (hashes.length + waybacktxs.size()) + ""
+				+ " (including " + hashes.length + " since the last snapshot)</td></tr>");
 		sb.append("</table>");
 
 		sb.append("</div>"); // /col-lg-10
