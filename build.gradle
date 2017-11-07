@@ -20,7 +20,8 @@ dependencies {
     compile 'com.sparkjava:spark-core:2.7.0'
     compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.6'
     compile 'com.google.guava:guava:23.3-jre'
-    
+    compile group: 'org.jdbi', name: 'jdbi', version: '2.78'
+    compile 'mysql:mysql-connector-java:5.1.41'
     
 
     compileOnly 'org.projectlombok:lombok:1.16.16'

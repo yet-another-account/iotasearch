@@ -27,6 +27,8 @@ import java.util.regex.Pattern;
 import org.apache.commons.io.FileUtils;
 
 import eukaryote.iota.confstat.ConfirmationStat;
+import eukaryote.iota.waybackdb.IWayBack;
+import eukaryote.iota.waybackdb.WayBackDB;
 import jota.IotaAPI;
 import jota.dto.response.FindTransactionResponse;
 import jota.dto.response.GetNodeInfoResponse;
@@ -60,6 +62,8 @@ public class Webserver {
 	private SimpleDateFormat dateFormatGmt;
 	private URL cmciotaprice;
 
+	IWayBack wayback;
+
 	String index = "Please wait";
 
 	public Webserver(int port) throws IOException, URISyntaxException {
@@ -74,7 +78,73 @@ public class Webserver {
 		});
 
 		get("/hash/:hash", (req, res) -> {
-			return serve(req, res);
+			String hash = req.params("hash");
+			
+			if (hash.equals(coordinator)) {
+				GetNodeInfoResponse nodeInfo = api.getNodeInfo();
+				return files.get("/coo").replace("<$milestone$>", nodeInfo.getLatestMilestone())
+						.replace("<$milestoneindex$>", "" + nodeInfo.getLatestMilestoneIndex());
+			}
+
+			if (hash.equals("999999999999999999999999999999999999999999999999999999999999999999999999999999999"))
+				return files.get("invalidhash");
+
+			if (hash.length() == 90) {
+				res.redirect("/address/" + hash, 301);
+			} else if (hash.length() == 81) {
+				if (hash.endsWith("999")) {
+					res.redirect("/transaction/" + hash, 301);
+				} else {
+					res.redirect("/address/" + hash, 301);
+				}
+			} else {
+				return files.get("invalidhash");
+			}
+
+			return "301 Redirecting...";
+		});
+
+		get("/transaction/:hash", (req, res) -> {
+			String hash = req.params("hash");
+
+			List<Transaction> txns = api.getTransactionsObjects(new String[] { hash });
+
+			log.debug("txns: {}", txns);
+
+			if (!txns.get(0).getHash()
+					.equals("999999999999999999999999999999999999999999999999999999999999999999999999999999999")) {
+				return formatTransaction(txns.get(0));
+			}
+			
+			res.redirect("/address/" + hash);
+			return "Not a transaction";
+		});
+
+		get("/bundle/:hash", (req, res) -> {
+			String hash = req.params("hash");
+			
+			FindTransactionResponse gbr = api.findTransactionsByBundles(hash);
+
+			log.debug("grb.len={}", gbr.getHashes().length);
+
+			if (gbr.getHashes().length != 0)
+				return formatBundle(hash, gbr.getHashes());
+			
+			return files.get("invalidhash");
+		});
+
+		get("/address/:hash", (req, res) -> {
+			String hash = req.params("hash");
+			
+			FindTransactionResponse ftba = api.findTransactionsByAddresses(hash);
+
+			long presnapshotval = sl.getPreSnapshot(hash.substring(0, 81));
+
+			if (ftba.getHashes().length != 0 || presnapshotval != 0)
+				return formatAddr(hash, ftba.getHashes(), presnapshotval);
+			
+			res.redirect("/bundle/" + hash, 301);
+			return "Not an address";
 		});
 
 		Locale.setDefault(Locale.US);
@@ -107,7 +177,11 @@ public class Webserver {
 		} while (api == null);
 		log.info("node info {}", api.getNodeInfo());
 		updatePages();
-		
+
+		wayback = new WayBackDB(FileUtils.readFileToString(new File("host.secret"), "UTF-8").trim(),
+				FileUtils.readFileToString(new File("user.secret"), "UTF-8").trim(),
+				FileUtils.readFileToString(new File("pass.secret"), "UTF-8").trim());
+
 		gf = new GraphFormatter(api);
 		nzb = new NZBundles(this, api, new URI("ws://tangle.blox.pm:8080"));
 		stat = new ConfirmationStat(api);
@@ -258,9 +332,9 @@ public class Webserver {
 		String bdllink = "<a href=\"/hash/" + txn.getBundle() + "\">" + txn.getBundle() + "</a>";
 		String trunk = "<a href=\"/hash/" + txn.getTrunkTransaction() + "\">" + txn.getTrunkTransaction() + "</a>";
 		String branch = "<a href=\"/hash/" + txn.getBranchTransaction() + "\">" + txn.getBranchTransaction() + "</a>";
-		
+
 		boolean newstat = false;
-		
+
 		try {
 			return title
 					.matcher(
@@ -280,7 +354,8 @@ public class Webserver {
 											.replace("<$msgraw$>", txn.getSignatureFragments())
 											.replace("<$branch$>", branch).replace("<$trunk$>", trunk)
 											.replace("<$bundle$>", bdllink)
-											.replace("<$stat$>", newstat ? stat.statusOf(txn).toString() : getConfirmed(txn))
+											.replace("<$stat$>",
+													newstat ? stat.statusOf(txn).toString() : getConfirmed(txn))
 											.replace("<$index$>", "" + (txn.getCurrentIndex()))
 											.replace("<$totalindex$>", "" + (txn.getLastIndex()))
 											.replace("<$wmag$>", "" + getWM(txn))
