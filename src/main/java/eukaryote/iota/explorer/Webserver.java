@@ -235,10 +235,10 @@ public class Webserver {
 
 		return gf.formatTransaction(dat.replace("<$ver$>", nodeInfo.getAppName() + " " + nodeInfo.getAppVersion())
 				.replace("<$milestone$>",
-						"<a href=\"/hash/" + nodeInfo.getLatestMilestone() + "\">" + nodeInfo.getLatestMilestoneIndex()
+						"<a href=\"/transaction/" + nodeInfo.getLatestMilestone() + "\">" + nodeInfo.getLatestMilestoneIndex()
 								+ "</a>")
 				.replace("<$ssmilestone$>",
-						"<a href=\"/hash/" + nodeInfo.getLatestSolidSubtangleMilestone() + "\">"
+						"<a href=\"/transaction/" + nodeInfo.getLatestSolidSubtangleMilestone() + "\">"
 								+ nodeInfo.getLatestSolidSubtangleMilestoneIndex() + "</a>")
 				.replace("<$neighbors$>", "" + nodeInfo.getNeighbors()).replace("<$tips$>", "" + nodeInfo.getTips())
 				.replace("<$cput$>", "" + nodeInfo.getJreAvailableProcessors())
@@ -258,10 +258,10 @@ public class Webserver {
 	 */
 	public String formatTransaction(Transaction txn, boolean iswayback) {
 
-		String addrlink = "<a href=\"/hash/" + txn.getAddress() + "\">" + txn.getAddress() + "</a>";
-		String bdllink = "<a href=\"/hash/" + txn.getBundle() + "\">" + txn.getBundle() + "</a>";
-		String trunk = "<a href=\"/hash/" + txn.getTrunkTransaction() + "\">" + txn.getTrunkTransaction() + "</a>";
-		String branch = "<a href=\"/hash/" + txn.getBranchTransaction() + "\">" + txn.getBranchTransaction() + "</a>";
+		String addrlink = "<a href=\"/address/" + txn.getAddress() + "\">" + txn.getAddress() + "</a>";
+		String bdllink = "<a href=\"/bundle/" + txn.getBundle() + "\">" + txn.getBundle() + "</a>";
+		String trunk = "<a href=\"/transaction/" + txn.getTrunkTransaction() + "\">" + txn.getTrunkTransaction() + "</a>";
+		String branch = "<a href=\"/transaction/" + txn.getBranchTransaction() + "\">" + txn.getBranchTransaction() + "</a>";
 
 		boolean newstat = false;
 
@@ -410,9 +410,9 @@ public class Webserver {
 				sb = inputs;
 			}
 
-			sb.append("<tr><td class=\"monospace\">" + "<a href=\"/hash/" + t.getHash() + "\">"
+			sb.append("<tr><td class=\"monospace\">" + "<a href=\"/transaction/" + t.getHash() + "\">"
 					+ t.getHash().substring(0, 15) + "&hellip;</a></td>");
-			sb.append("</td><td class=\"monospace\"><a href=\"/hash/" + t.getAddress() + "\">"
+			sb.append("</td><td class=\"monospace\"><a href=\"/address/" + t.getAddress() + "\">"
 					+ t.getAddress().substring(0, 15) + "&hellip;</a></td>");
 			sb.append("<td>" + IotaUnitConverter.convertRawIotaAmountToDisplayText(Math.abs(t.getValue()), true)
 					+ "</td></tr>\n");
@@ -532,10 +532,10 @@ public class Webserver {
 			sb.append(getConfirmed(num));
 			sb.append("</td>");
 			sb.append("<td>");
-			sb.append("<a href=\"/hash/" + txn.getHash() + "\">" + txn.getHash().substring(0, 15) + "&hellip;</a>");
+			sb.append("<a href=\"/transaction/" + txn.getHash() + "\">" + txn.getHash().substring(0, 15) + "&hellip;</a>");
 			sb.append("</td>");
 			sb.append("<td>");
-			sb.append("<a href=\"/hash/" + txn.getBundle() + "\">" + txn.getBundle().substring(0, 15) + "&hellip;</a>");
+			sb.append("<a href=\"/bundle/" + txn.getBundle() + "\">" + txn.getBundle().substring(0, 15) + "&hellip;</a>");
 			sb.append("</td>");
 			sb.append("<td>");
 			sb.append("<span class=\"monospace\"><small>" + txn.getTag().replaceFirst("9+$", "") + "</small></span>");
