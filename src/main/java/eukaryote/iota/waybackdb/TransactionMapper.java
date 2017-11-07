@@ -3,13 +3,14 @@ package eukaryote.iota.waybackdb;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+import org.apache.commons.lang3.StringUtils;
 import org.skife.jdbi.v2.StatementContext;
 import org.skife.jdbi.v2.tweak.ResultSetMapper;
 
 import jota.model.Transaction;
 
 public class TransactionMapper implements ResultSetMapper<Transaction> {
-
+	private static final String EMPTYSIG = StringUtils.repeat('9', 2187);
 	@Override
 	public Transaction map(int index, ResultSet r, StatementContext ctx) throws SQLException {
 		Transaction t = new Transaction();
@@ -27,6 +28,9 @@ public class TransactionMapper implements ResultSetMapper<Transaction> {
 		t.setNonce(r.getString("nonce"));
 		t.setTag(r.getString("tag"));
 		t.setPersistence(true);
+		
+		if (t.getSignatureFragments().isEmpty())
+			t.setSignatureFragments(EMPTYSIG);
 		
 		return t;
 	}

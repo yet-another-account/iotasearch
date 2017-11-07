@@ -78,7 +78,7 @@ public class Webserver {
 
 		get("/hash/:hash", (req, res) -> {
 			String hash = req.params("hash");
-			
+
 			if (hash.equals(coordinator)) {
 				GetNodeInfoResponse nodeInfo = api.getNodeInfo();
 				return files.get("/coo").replace("<$milestone$>", nodeInfo.getLatestMilestone())
@@ -107,41 +107,49 @@ public class Webserver {
 			String hash = req.params("hash");
 
 			List<Transaction> txns = api.getTransactionsObjects(new String[] { hash });
-
-			log.debug("txns: {}", txns);
-
 			if (!txns.get(0).getHash()
 					.equals("999999999999999999999999999999999999999999999999999999999999999999999999999999999")) {
-				return formatTransaction(txns.get(0));
+				return formatTransaction(txns.get(0), false);
 			}
-			
+
+			Transaction tx = wayback.getTransaction(hash);
+			if (tx != null) {
+				return formatTransaction(tx, true);
+			}
+
 			res.redirect("/address/" + hash);
 			return "Not a transaction";
 		});
 
 		get("/bundle/:hash", (req, res) -> {
 			String hash = req.params("hash");
-			
+
 			FindTransactionResponse gbr = api.findTransactionsByBundles(hash);
-
-			log.debug("grb.len={}", gbr.getHashes().length);
-
-			if (gbr.getHashes().length != 0)
-				return formatBundle(hash, gbr.getHashes());
+			
+			if (gbr.getHashes().length != 0) {
+				List<Transaction> txnobjs = api.getTransactionsObjects(gbr.getHashes());
+				return formatBundle(hash, txnobjs);
+			}
+			
+			List<Transaction> wbb = wayback.getBundle(hash);
+			
+			if (!wbb.isEmpty()) {
+				return formatBundle(hash, wbb);
+			}
 			
 			return files.get("invalidhash");
 		});
 
 		get("/address/:hash", (req, res) -> {
 			String hash = req.params("hash");
-			
+
 			FindTransactionResponse ftba = api.findTransactionsByAddresses(hash);
-
-			long presnapshotval = sl.getPreSnapshot(hash.substring(0, 81));
-
-			if (ftba.getHashes().length != 0 || presnapshotval != 0)
-				return formatAddr(hash, ftba.getHashes(), presnapshotval);
 			
+			List<Transaction> waybacktxs = wayback.getTransactionsByAddress(hash);
+
+			if (ftba.getHashes().length != 0 || !waybacktxs.isEmpty())
+				return formatAddr(hash, ftba.getHashes(), waybacktxs);
+
 			res.redirect("/bundle/" + hash, 301);
 			return "Not an address";
 		});
@@ -181,7 +189,7 @@ public class Webserver {
 				FileUtils.readFileToString(new File("user.secret"), "UTF-8").trim(),
 				FileUtils.readFileToString(new File("pass.secret"), "UTF-8").trim());
 
-		gf = new GraphFormatter(api);
+		gf = new GraphFormatter(api, wayback);
 		nzb = new NZBundles(this, api, new URI("ws://tangle.blox.pm:8080"));
 		stat = new ConfirmationStat(api);
 		sl = new SnapshotLoader(new File("snapshot"));
@@ -236,7 +244,7 @@ public class Webserver {
 				.replace("<$cput$>", "" + nodeInfo.getJreAvailableProcessors())
 				.replace("<$memt$>", "" + FileUtils.byteCountToDisplaySize(nodeInfo.getJreTotalMemory()))
 				.replace("<$lasttxns$>", nzb == null ? "" : nzb.genTblBody())
-				.replace("<$graph$>", files.get("/tanglegraph")), milestone);
+				.replace("<$graph$>", files.get("/tanglegraph")), milestone, false);
 	}
 
 	public Transaction getTxnFromHash(String hash) {
@@ -248,7 +256,7 @@ public class Webserver {
 	/*
 	 * FORMAT TRANSACTION
 	 */
-	public String formatTransaction(Transaction txn) {
+	public String formatTransaction(Transaction txn, boolean iswayback) {
 
 		String addrlink = "<a href=\"/hash/" + txn.getAddress() + "\">" + txn.getAddress() + "</a>";
 		String bdllink = "<a href=\"/hash/" + txn.getBundle() + "\">" + txn.getBundle() + "</a>";
@@ -282,7 +290,7 @@ public class Webserver {
 											.replace("<$totalindex$>", "" + (txn.getLastIndex()))
 											.replace("<$wmag$>", "" + getWM(txn))
 											.replace("<$graph$>", files.get("/tanglegraph")),
-									txn.getHash()))
+									txn.getHash(), iswayback))
 					.replaceFirst("<title>Iota Transaction " + txn.getHash() + "</title>");
 		} catch (NoNodeInfoException e) {
 			return "<h1>500 Internal Server Error</h1>\n"
@@ -349,6 +357,9 @@ public class Webserver {
 
 	public int getConfirmedNum(Transaction txn) {
 		try {
+			if (txn.getPersistence() != null && txn.getPersistence())
+				return 1;
+
 			boolean b = api.getLatestInclusion(new String[] { txn.getHash() }).getStates()[0];
 			if (b) {
 				return 1;
@@ -372,8 +383,7 @@ public class Webserver {
 		return false;
 	}
 
-	public String formatBundle(String hash, String[] txns) {
-		log.info("bundle");
+	public String formatBundle(String hash, List<Transaction> txnobjs) {
 		StringBuilder inputs = new StringBuilder();
 		inputs.append("<table class=\"table table-striped table-hover\">");
 		inputs.append("<thead><tr><th>Transaction Hash</th><th>Address</th><th>Amount</th></tr></thead><tbody>");
@@ -382,7 +392,6 @@ public class Webserver {
 		outputs.append("<table class=\"table table-striped table-hover\">");
 		outputs.append("<thead><tr><th>Transaction Hash</th><th>Address</th><th>Amount</th></tr></thead><tbody>");
 
-		List<Transaction> txnobjs = api.getTransactionsObjects(txns);
 
 		// sort by value descending
 		Collections.sort(txnobjs, new Comparator<Transaction>() {
@@ -421,10 +430,8 @@ public class Webserver {
 
 	String coordinator = "KPWCHICGJZXKE9GSUDXZYUAPLHAKAHYHDXNPHENTERYMMBQOPSQIDENXKLKCEYCPVTZQLEEJVYJZV9BWU";
 
-	public String formatAddr(String addr, String[] hashes, long presnapshotval) {
+	public String formatAddr(String addr, String[] hashes, List<Transaction> waybacktxs) {
 		NumberFormat formatter = NumberFormat.getCurrencyInstance();
-
-		log.debug("Formatting hashes (count: {})", hashes.length);
 
 		StringBuilder sb = new StringBuilder();
 
@@ -462,6 +469,8 @@ public class Webserver {
 
 		List<Transaction> txnobjs = addr.equals(coordinator) ? null : api.getTransactionsObjects(hashes);
 
+		txnobjs.addAll(waybacktxs);
+		
 		if (addr.equals(coordinator) || txnobjs.size() > 200) {
 			sb.append("<tr><td><h2 class=\"text-center\">Too many transactions to count!</h2></td></tr>");
 		}
@@ -550,13 +559,6 @@ public class Webserver {
 						+ txncount + " more duplicate unconfirmed transaction" + (txncount == 1 ? "" : "s")
 						+ " (probably reattaches)</td></tr>");
 			}
-		}
-
-		// snapshot
-		if (presnapshotval != 0) {
-			sb.append("<tr><td colspan = \"5\" class=\"text-center\">Snapshot</td>"
-					+ "<td><span class=\"label label-success\">IN</span></td><td>"
-					+ IotaUnitConverter.convertRawIotaAmountToDisplayText(presnapshotval, true) + "</td>");
 		}
 
 		sb.append("</tbody>");

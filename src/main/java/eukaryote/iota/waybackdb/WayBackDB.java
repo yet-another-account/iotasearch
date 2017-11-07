@@ -35,4 +35,27 @@ public class WayBackDB implements IWayBack {
 		Transaction txn = dbinterface.getTransaction(hash);
 		return txn;
 	}
+
+	@Override
+	public List<Transaction> getTransactions(List<String> hashes) {
+		List<Transaction> ret = new ArrayList<>(hashes.size());
+
+		for (String hash : hashes) {
+			Transaction tx = getTransaction(hash);
+			if (tx != null)
+				ret.add(tx);
+		}
+		
+		return ret;
+	}
+
+	@Override
+	public List<Transaction> getBundle(String hash) {
+		return dbinterface.getBundle(hash);
+	}
+
+	@Override
+	public List<Transaction> getTransactionsByAddress(String address) {
+		return dbinterface.getTransactionsByAddress(address.substring(0, 81));
+	}
 }

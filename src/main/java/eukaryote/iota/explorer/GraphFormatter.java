@@ -12,22 +12,28 @@ import java.util.TreeSet;
 
 import org.apache.commons.lang3.StringUtils;
 
+import eukaryote.iota.waybackdb.IWayBack;
 import jota.IotaAPI;
 import jota.model.Transaction;
 
 public class GraphFormatter {
 
 	IotaAPI api;
+	IWayBack wayback;
 	int truncatelen = 8;
 
 	final String[] colors = { "FE2F00", "F78700", "F0DB00", "AAEA00", "00DD00" };
 
-	public GraphFormatter(IotaAPI api) {
+	public GraphFormatter(IotaAPI api, IWayBack wayback) {
 		this.api = api;
+		this.wayback = wayback;
 	}
 
-	public String formatTransaction(String pagehtml, String txnhash) {
-		final int depth = 5;
+	public String formatTransaction(String pagehtml, String txnhash, boolean iswayback) {
+		int depth = 5;
+		if (iswayback)
+			depth -= 1;
+		
 		final String[] strarr = new String[] {};
 
 		Map<Transaction, Integer> txns = new TreeMap<Transaction, Integer>(new Comparator<Transaction>() {
@@ -43,7 +49,8 @@ public class GraphFormatter {
 		toadd.add(txnhash);
 
 		for (int i = 0; i < depth; i++) {
-			List<Transaction> newtxns = api.getTransactionsObjects(toadd.toArray(strarr));
+			List<Transaction> newtxns = iswayback ? wayback.getTransactions(toadd)
+					: api.getTransactionsObjects(toadd.toArray(strarr));
 
 			for (Transaction t : newtxns)
 				txns.putIfAbsent(t, i);
