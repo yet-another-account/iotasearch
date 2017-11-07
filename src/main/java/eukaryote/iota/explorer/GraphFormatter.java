@@ -32,7 +32,7 @@ public class GraphFormatter {
 	public String formatTransaction(String pagehtml, String txnhash, boolean iswayback) {
 		int depth = 5;
 		if (iswayback)
-			depth -= 1;
+			depth = 2;
 		
 		final String[] strarr = new String[] {};
 
