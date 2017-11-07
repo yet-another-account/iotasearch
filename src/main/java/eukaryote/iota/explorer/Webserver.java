@@ -27,12 +27,13 @@ import java.util.regex.Pattern;
 import org.apache.commons.io.FileUtils;
 
 import eukaryote.iota.confstat.ConfirmationStat;
+import eukaryote.iota.waybackdb.IWayBack;
+import eukaryote.iota.waybackdb.WayBackDB;
 import jota.IotaAPI;
 import jota.dto.response.FindTransactionResponse;
 import jota.dto.response.GetNodeInfoResponse;
 import jota.error.NoNodeInfoException;
 import jota.model.Transaction;
-import jota.utils.Checksum;
 import jota.utils.Converter;
 import jota.utils.IotaUnitConverter;
 import lombok.extern.slf4j.Slf4j;
@@ -60,6 +61,8 @@ public class Webserver {
 	private SimpleDateFormat dateFormatGmt;
 	private URL cmciotaprice;
 
+	IWayBack wayback;
+
 	String index = "Please wait";
 
 	public Webserver(int port) throws IOException, URISyntaxException {
@@ -74,7 +77,81 @@ public class Webserver {
 		});
 
 		get("/hash/:hash", (req, res) -> {
-			return serve(req, res);
+			String hash = req.params("hash");
+
+			if (hash.equals(coordinator)) {
+				GetNodeInfoResponse nodeInfo = api.getNodeInfo();
+				return files.get("/coo").replace("<$milestone$>", nodeInfo.getLatestMilestone())
+						.replace("<$milestoneindex$>", "" + nodeInfo.getLatestMilestoneIndex());
+			}
+
+			if (hash.equals("999999999999999999999999999999999999999999999999999999999999999999999999999999999"))
+				return files.get("invalidhash");
+
+			if (hash.length() == 90) {
+				res.redirect("/address/" + hash, 301);
+			} else if (hash.length() == 81) {
+				if (hash.endsWith("999")) {
+					res.redirect("/transaction/" + hash, 301);
+				} else {
+					res.redirect("/address/" + hash, 301);
+				}
+			} else {
+				return files.get("invalidhash");
+			}
+
+			return "301 Redirecting...";
+		});
+
+		get("/transaction/:hash", (req, res) -> {
+			String hash = req.params("hash");
+
+			List<Transaction> txns = api.getTransactionsObjects(new String[] { hash });
+			if (!txns.get(0).getHash()
+					.equals("999999999999999999999999999999999999999999999999999999999999999999999999999999999")) {
+				return formatTransaction(txns.get(0), false);
+			}
+
+			Transaction tx = wayback.getTransaction(hash);
+			if (tx != null) {
+				return formatTransaction(tx, true);
+			}
+
+			res.redirect("/address/" + hash);
+			return "Not a transaction";
+		});
+
+		get("/bundle/:hash", (req, res) -> {
+			String hash = req.params("hash");
+
+			FindTransactionResponse gbr = api.findTransactionsByBundles(hash);
+			
+			if (gbr.getHashes().length != 0) {
+				List<Transaction> txnobjs = api.getTransactionsObjects(gbr.getHashes());
+				return formatBundle(hash, txnobjs);
+			}
+			
+			List<Transaction> wbb = wayback.getBundle(hash);
+			
+			if (!wbb.isEmpty()) {
+				return formatBundle(hash, wbb);
+			}
+			
+			return files.get("invalidhash");
+		});
+
+		get("/address/:hash", (req, res) -> {
+			String hash = req.params("hash");
+
+			FindTransactionResponse ftba = api.findTransactionsByAddresses(hash);
+			
+			List<Transaction> waybacktxs = wayback.getTransactionsByAddress(hash);
+
+			if (ftba.getHashes().length != 0 || !waybacktxs.isEmpty())
+				return formatAddr(hash, ftba.getHashes(), waybacktxs);
+
+			res.redirect("/bundle/" + hash, 301);
+			return "Not an address";
 		});
 
 		Locale.setDefault(Locale.US);
@@ -107,86 +184,15 @@ public class Webserver {
 		} while (api == null);
 		log.info("node info {}", api.getNodeInfo());
 		updatePages();
-		
-		gf = new GraphFormatter(api);
+
+		wayback = new WayBackDB(FileUtils.readFileToString(new File("host.secret"), "UTF-8").trim(),
+				FileUtils.readFileToString(new File("user.secret"), "UTF-8").trim(),
+				FileUtils.readFileToString(new File("pass.secret"), "UTF-8").trim());
+
+		gf = new GraphFormatter(api, wayback);
 		nzb = new NZBundles(this, api, new URI("ws://tangle.blox.pm:8080"));
 		stat = new ConfirmationStat(api);
 		sl = new SnapshotLoader(new File("snapshot"));
-	}
-
-	private String serve(Request req, Response res) {
-
-		String hash = req.params("hash");
-
-		log.info("Requested hash {}", hash);
-
-		if (hash.equals(coordinator)) {
-			GetNodeInfoResponse nodeInfo = api.getNodeInfo();
-			return files.get("/coo").replace("<$milestone$>", nodeInfo.getLatestMilestone())
-					.replace("<$milestoneindex$>", "" + nodeInfo.getLatestMilestoneIndex());
-		}
-
-		if (hash.equals("999999999999999999999999999999999999999999999999999999999999999999999999999999999"))
-			return files.get("invalidhash");
-
-		if (hash.length() != 81 && hash.length() != 90)
-			return files.get("/404");
-
-		if (hash.length() == 81 && hash.endsWith("999"))
-			try {
-				// check if txn
-				List<Transaction> txns = api.getTransactionsObjects(new String[] { hash });
-
-				log.debug("txns: {}", txns);
-
-				if (!txns.isEmpty() || (txns.get(0).getHash()
-						.equals("999999999999999999999999999999999999999999999999999999999999999999999999999999999"))) {
-					return formatTransaction(txns.get(0));
-				}
-
-			} catch (IllegalAccessError | Exception e) {
-				log.error("Error:", e);
-				// invalid txn hash
-			}
-
-		if (hash.length() != 90)
-			try {
-				// check if bundle
-				FindTransactionResponse gbr = api.findTransactionsByBundles(hash);
-
-				log.debug("grb.len={}", gbr.getHashes().length);
-
-				if (gbr.getHashes().length != 0)
-					return formatBundle(hash, gbr.getHashes());
-
-			} catch (IllegalAccessError | Exception e) {
-				log.debug("Error:", e);
-				// invalid bdl hash
-			}
-
-		try {
-
-			// redirect with checksum
-			if (hash.length() == 81 && !hash.endsWith("999")) {
-				hash = Checksum.addChecksum(hash);
-
-				res.redirect("/hash/" + hash);
-				return "";
-			}
-
-			// check if address
-			FindTransactionResponse ftba = api.findTransactionsByAddresses(hash);
-
-			long presnapshotval = sl.getPreSnapshot(hash.substring(0, 81));
-
-			if (ftba.getHashes().length != 0 || presnapshotval != 0)
-				return formatAddr(hash, ftba.getHashes(), presnapshotval);
-		} catch (IllegalAccessError | Exception e) {
-			log.debug("Error:", e);
-			// invalid address hash
-		}
-
-		return files.get("invalidhash");
 	}
 
 	protected void updatePages() throws IOException {
@@ -213,11 +219,11 @@ public class Webserver {
 
 	}
 
-	public String chTitle(String pg, String newtitle) {
+	private String chTitle(String pg, String newtitle) {
 		return title.matcher(pg).replaceFirst("<title>" + newtitle + "</title>");
 	}
 
-	public String parse(File f) throws IOException {
+	private String parse(File f) throws IOException {
 		return (files.get("/header")) + FileUtils.readFileToString(f, Charset.forName("UTF-8"))
 				+ (files.get("/footer"));
 	}
@@ -229,16 +235,16 @@ public class Webserver {
 
 		return gf.formatTransaction(dat.replace("<$ver$>", nodeInfo.getAppName() + " " + nodeInfo.getAppVersion())
 				.replace("<$milestone$>",
-						"<a href=\"/hash/" + nodeInfo.getLatestMilestone() + "\">" + nodeInfo.getLatestMilestoneIndex()
+						"<a href=\"/transaction/" + nodeInfo.getLatestMilestone() + "\">" + nodeInfo.getLatestMilestoneIndex()
 								+ "</a>")
 				.replace("<$ssmilestone$>",
-						"<a href=\"/hash/" + nodeInfo.getLatestSolidSubtangleMilestone() + "\">"
+						"<a href=\"/transaction/" + nodeInfo.getLatestSolidSubtangleMilestone() + "\">"
 								+ nodeInfo.getLatestSolidSubtangleMilestoneIndex() + "</a>")
 				.replace("<$neighbors$>", "" + nodeInfo.getNeighbors()).replace("<$tips$>", "" + nodeInfo.getTips())
 				.replace("<$cput$>", "" + nodeInfo.getJreAvailableProcessors())
 				.replace("<$memt$>", "" + FileUtils.byteCountToDisplaySize(nodeInfo.getJreTotalMemory()))
 				.replace("<$lasttxns$>", nzb == null ? "" : nzb.genTblBody())
-				.replace("<$graph$>", files.get("/tanglegraph")), milestone);
+				.replace("<$graph$>", files.get("/tanglegraph")), milestone, false);
 	}
 
 	public Transaction getTxnFromHash(String hash) {
@@ -250,17 +256,15 @@ public class Webserver {
 	/*
 	 * FORMAT TRANSACTION
 	 */
-	public String formatTransaction(Transaction txn) {
+	public String formatTransaction(Transaction txn, boolean iswayback) {
 
-		StringBuilder sb = new StringBuilder();
+		String addrlink = "<a href=\"/address/" + txn.getAddress() + "\">" + txn.getAddress() + "</a>";
+		String bdllink = "<a href=\"/bundle/" + txn.getBundle() + "\">" + txn.getBundle() + "</a>";
+		String trunk = "<a href=\"/transaction/" + txn.getTrunkTransaction() + "\">" + txn.getTrunkTransaction() + "</a>";
+		String branch = "<a href=\"/transaction/" + txn.getBranchTransaction() + "\">" + txn.getBranchTransaction() + "</a>";
 
-		String addrlink = "<a href=\"/hash/" + txn.getAddress() + "\">" + txn.getAddress() + "</a>";
-		String bdllink = "<a href=\"/hash/" + txn.getBundle() + "\">" + txn.getBundle() + "</a>";
-		String trunk = "<a href=\"/hash/" + txn.getTrunkTransaction() + "\">" + txn.getTrunkTransaction() + "</a>";
-		String branch = "<a href=\"/hash/" + txn.getBranchTransaction() + "\">" + txn.getBranchTransaction() + "</a>";
-		
 		boolean newstat = false;
-		
+
 		try {
 			return title
 					.matcher(
@@ -280,12 +284,13 @@ public class Webserver {
 											.replace("<$msgraw$>", txn.getSignatureFragments())
 											.replace("<$branch$>", branch).replace("<$trunk$>", trunk)
 											.replace("<$bundle$>", bdllink)
-											.replace("<$stat$>", newstat ? stat.statusOf(txn).toString() : getConfirmed(txn))
+											.replace("<$stat$>",
+													newstat ? stat.statusOf(txn).toString() : getConfirmed(txn))
 											.replace("<$index$>", "" + (txn.getCurrentIndex()))
 											.replace("<$totalindex$>", "" + (txn.getLastIndex()))
 											.replace("<$wmag$>", "" + getWM(txn))
 											.replace("<$graph$>", files.get("/tanglegraph")),
-									txn.getHash()))
+									txn.getHash(), iswayback))
 					.replaceFirst("<title>Iota Transaction " + txn.getHash() + "</title>");
 		} catch (NoNodeInfoException e) {
 			return "<h1>500 Internal Server Error</h1>\n"
@@ -351,18 +356,15 @@ public class Webserver {
 	}
 
 	public int getConfirmedNum(Transaction txn) {
-		final int threshold = 60 * 30;
 		try {
+			if (txn.getPersistence() != null && txn.getPersistence())
+				return 1;
+
 			boolean b = api.getLatestInclusion(new String[] { txn.getHash() }).getStates()[0];
 			if (b) {
 				return 1;
 			} else {
 				return 0;
-
-				/*
-				 * if (txn.getTimestamp() + threshold > System.currentTimeMillis() / 1000)
-				 * return 0; else return -1;
-				 */
 			}
 		} catch (Exception e) {
 			log.error("err", e);
@@ -381,8 +383,7 @@ public class Webserver {
 		return false;
 	}
 
-	public String formatBundle(String hash, String[] txns) {
-		log.info("bundle");
+	public String formatBundle(String hash, List<Transaction> txnobjs) {
 		StringBuilder inputs = new StringBuilder();
 		inputs.append("<table class=\"table table-striped table-hover\">");
 		inputs.append("<thead><tr><th>Transaction Hash</th><th>Address</th><th>Amount</th></tr></thead><tbody>");
@@ -391,7 +392,6 @@ public class Webserver {
 		outputs.append("<table class=\"table table-striped table-hover\">");
 		outputs.append("<thead><tr><th>Transaction Hash</th><th>Address</th><th>Amount</th></tr></thead><tbody>");
 
-		List<Transaction> txnobjs = api.getTransactionsObjects(txns);
 
 		// sort by value descending
 		Collections.sort(txnobjs, new Comparator<Transaction>() {
@@ -410,9 +410,9 @@ public class Webserver {
 				sb = inputs;
 			}
 
-			sb.append("<tr><td class=\"monospace\">" + "<a href=\"/hash/" + t.getHash() + "\">"
+			sb.append("<tr><td class=\"monospace\">" + "<a href=\"/transaction/" + t.getHash() + "\">"
 					+ t.getHash().substring(0, 15) + "&hellip;</a></td>");
-			sb.append("</td><td class=\"monospace\"><a href=\"/hash/" + t.getAddress() + "\">"
+			sb.append("</td><td class=\"monospace\"><a href=\"/address/" + t.getAddress() + "\">"
 					+ t.getAddress().substring(0, 15) + "&hellip;</a></td>");
 			sb.append("<td>" + IotaUnitConverter.convertRawIotaAmountToDisplayText(Math.abs(t.getValue()), true)
 					+ "</td></tr>\n");
@@ -430,10 +430,8 @@ public class Webserver {
 
 	String coordinator = "KPWCHICGJZXKE9GSUDXZYUAPLHAKAHYHDXNPHENTERYMMBQOPSQIDENXKLKCEYCPVTZQLEEJVYJZV9BWU";
 
-	public String formatAddr(String addr, String[] hashes, long presnapshotval) {
+	public String formatAddr(String addr, String[] hashes, List<Transaction> waybacktxs) {
 		NumberFormat formatter = NumberFormat.getCurrencyInstance();
-
-		log.debug("Formatting hashes (count: {})", hashes.length);
 
 		StringBuilder sb = new StringBuilder();
 
@@ -471,6 +469,8 @@ public class Webserver {
 
 		List<Transaction> txnobjs = addr.equals(coordinator) ? null : api.getTransactionsObjects(hashes);
 
+		txnobjs.addAll(waybacktxs);
+		
 		if (addr.equals(coordinator) || txnobjs.size() > 200) {
 			sb.append("<tr><td><h2 class=\"text-center\">Too many transactions to count!</h2></td></tr>");
 		}
@@ -532,10 +532,10 @@ public class Webserver {
 			sb.append(getConfirmed(num));
 			sb.append("</td>");
 			sb.append("<td>");
-			sb.append("<a href=\"/hash/" + txn.getHash() + "\">" + txn.getHash().substring(0, 15) + "&hellip;</a>");
+			sb.append("<a href=\"/transaction/" + txn.getHash() + "\">" + txn.getHash().substring(0, 15) + "&hellip;</a>");
 			sb.append("</td>");
 			sb.append("<td>");
-			sb.append("<a href=\"/hash/" + txn.getBundle() + "\">" + txn.getBundle().substring(0, 15) + "&hellip;</a>");
+			sb.append("<a href=\"/bundle/" + txn.getBundle() + "\">" + txn.getBundle().substring(0, 15) + "&hellip;</a>");
 			sb.append("</td>");
 			sb.append("<td>");
 			sb.append("<span class=\"monospace\"><small>" + txn.getTag().replaceFirst("9+$", "") + "</small></span>");
@@ -559,13 +559,6 @@ public class Webserver {
 						+ txncount + " more duplicate unconfirmed transaction" + (txncount == 1 ? "" : "s")
 						+ " (probably reattaches)</td></tr>");
 			}
-		}
-
-		// snapshot
-		if (presnapshotval != 0) {
-			sb.append("<tr><td colspan = \"5\" class=\"text-center\">Snapshot</td>"
-					+ "<td><span class=\"label label-success\">IN</span></td><td>"
-					+ IotaUnitConverter.convertRawIotaAmountToDisplayText(presnapshotval, true) + "</td>");
 		}
 
 		sb.append("</tbody>");
