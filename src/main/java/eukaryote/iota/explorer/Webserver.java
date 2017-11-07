@@ -34,7 +34,6 @@ import jota.dto.response.FindTransactionResponse;
 import jota.dto.response.GetNodeInfoResponse;
 import jota.error.NoNodeInfoException;
 import jota.model.Transaction;
-import jota.utils.Checksum;
 import jota.utils.Converter;
 import jota.utils.IotaUnitConverter;
 import lombok.extern.slf4j.Slf4j;
@@ -188,81 +187,6 @@ public class Webserver {
 		sl = new SnapshotLoader(new File("snapshot"));
 	}
 
-	private String serve(Request req, Response res) {
-
-		String hash = req.params("hash");
-
-		log.info("Requested hash {}", hash);
-
-		if (hash.equals(coordinator)) {
-			GetNodeInfoResponse nodeInfo = api.getNodeInfo();
-			return files.get("/coo").replace("<$milestone$>", nodeInfo.getLatestMilestone())
-					.replace("<$milestoneindex$>", "" + nodeInfo.getLatestMilestoneIndex());
-		}
-
-		if (hash.equals("999999999999999999999999999999999999999999999999999999999999999999999999999999999"))
-			return files.get("invalidhash");
-
-		if (hash.length() != 81 && hash.length() != 90)
-			return files.get("/404");
-
-		if (hash.length() == 81 && hash.endsWith("999"))
-			try {
-				// check if txn
-				List<Transaction> txns = api.getTransactionsObjects(new String[] { hash });
-
-				log.debug("txns: {}", txns);
-
-				if (!txns.isEmpty() || (txns.get(0).getHash()
-						.equals("999999999999999999999999999999999999999999999999999999999999999999999999999999999"))) {
-					return formatTransaction(txns.get(0));
-				}
-
-			} catch (IllegalAccessError | Exception e) {
-				log.error("Error:", e);
-				// invalid txn hash
-			}
-
-		if (hash.length() != 90)
-			try {
-				// check if bundle
-				FindTransactionResponse gbr = api.findTransactionsByBundles(hash);
-
-				log.debug("grb.len={}", gbr.getHashes().length);
-
-				if (gbr.getHashes().length != 0)
-					return formatBundle(hash, gbr.getHashes());
-
-			} catch (IllegalAccessError | Exception e) {
-				log.debug("Error:", e);
-				// invalid bdl hash
-			}
-
-		try {
-
-			// redirect with checksum
-			if (hash.length() == 81 && !hash.endsWith("999")) {
-				hash = Checksum.addChecksum(hash);
-
-				res.redirect("/hash/" + hash);
-				return "";
-			}
-
-			// check if address
-			FindTransactionResponse ftba = api.findTransactionsByAddresses(hash);
-
-			long presnapshotval = sl.getPreSnapshot(hash.substring(0, 81));
-
-			if (ftba.getHashes().length != 0 || presnapshotval != 0)
-				return formatAddr(hash, ftba.getHashes(), presnapshotval);
-		} catch (IllegalAccessError | Exception e) {
-			log.debug("Error:", e);
-			// invalid address hash
-		}
-
-		return files.get("invalidhash");
-	}
-
 	protected void updatePages() throws IOException {
 
 		files.put("/header", FileUtils.readFileToString(new File("html/header.html"), Charset.forName("UTF-8")));
@@ -287,11 +211,11 @@ public class Webserver {
 
 	}
 
-	public String chTitle(String pg, String newtitle) {
+	private String chTitle(String pg, String newtitle) {
 		return title.matcher(pg).replaceFirst("<title>" + newtitle + "</title>");
 	}
 
-	public String parse(File f) throws IOException {
+	private String parse(File f) throws IOException {
 		return (files.get("/header")) + FileUtils.readFileToString(f, Charset.forName("UTF-8"))
 				+ (files.get("/footer"));
 	}
@@ -325,8 +249,6 @@ public class Webserver {
 	 * FORMAT TRANSACTION
 	 */
 	public String formatTransaction(Transaction txn) {
-
-		StringBuilder sb = new StringBuilder();
 
 		String addrlink = "<a href=\"/hash/" + txn.getAddress() + "\">" + txn.getAddress() + "</a>";
 		String bdllink = "<a href=\"/hash/" + txn.getBundle() + "\">" + txn.getBundle() + "</a>";
@@ -426,18 +348,12 @@ public class Webserver {
 	}
 
 	public int getConfirmedNum(Transaction txn) {
-		final int threshold = 60 * 30;
 		try {
 			boolean b = api.getLatestInclusion(new String[] { txn.getHash() }).getStates()[0];
 			if (b) {
 				return 1;
 			} else {
 				return 0;
-
-				/*
-				 * if (txn.getTimestamp() + threshold > System.currentTimeMillis() / 1000)
-				 * return 0; else return -1;
-				 */
 			}
 		} catch (Exception e) {
 			log.error("err", e);
