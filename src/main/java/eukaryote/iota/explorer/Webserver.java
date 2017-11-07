@@ -460,6 +460,13 @@ public class Webserver {
 		sb.append("<div class=\"col-lg-9 col-md-8\">");
 
 		sb.append("<table class=\"table\">");
+		
+		if (addr.length() == 81)
+			try {
+				addr = Checksum.addChecksum(addr);
+			} catch (InvalidAddressException e) {
+				e.printStackTrace();
+			}
 
 		sb.append("<tr><td>Address: </td><td class=\"hashtd\"> <span id=\"hashdisp\">" + addr.substring(0, 81)
 				+ "<span title=\"Checksum\" id=\"addr-checksum\" class=\"text-muted\">" + addr.substring(81)
