@@ -157,6 +157,11 @@ public class Webserver {
 			res.redirect("/bundle/" + hash, 301);
 			return "Not an address";
 		});
+		
+		get("/faq", (req, res) -> {
+			return files.get("/faq");
+		});
+		
 
 		Locale.setDefault(Locale.US);
 
