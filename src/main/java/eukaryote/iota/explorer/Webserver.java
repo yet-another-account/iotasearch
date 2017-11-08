@@ -81,13 +81,13 @@ public class Webserver {
 		get("/hash/:hash", (req, res) -> {
 			String hash = req.params("hash");
 
-			if (hash.equals(coordinator)) {
+			if (hash.startsWith(coordinator)) {
 				GetNodeInfoResponse nodeInfo = api.getNodeInfo();
 				return files.get("/coo").replace("<$milestone$>", nodeInfo.getLatestMilestone())
 						.replace("<$milestoneindex$>", "" + nodeInfo.getLatestMilestoneIndex());
 			}
 
-			if (hash.equals("999999999999999999999999999999999999999999999999999999999999999999999999999999999"))
+			if (hash.startsWith("999999999999999999999999999999999999999999999999999999999999999999999999999999999"))
 				return files.get("invalidhash");
 
 			if (hash.length() == 90) {
@@ -146,6 +146,12 @@ public class Webserver {
 
 		get("/address/:hash", (req, res) -> {
 			String hash = req.params("hash");
+			
+			if (hash.startsWith(coordinator)) {
+				GetNodeInfoResponse nodeInfo = api.getNodeInfo();
+				return files.get("/coo").replace("<$milestone$>", nodeInfo.getLatestMilestone())
+						.replace("<$milestoneindex$>", "" + nodeInfo.getLatestMilestoneIndex());
+			}
 
 			FindTransactionResponse ftba = api.findTransactionsByAddresses(hash);
 			
