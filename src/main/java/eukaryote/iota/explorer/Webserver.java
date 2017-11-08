@@ -46,6 +46,7 @@ import static spark.Spark.*;
 
 @Slf4j
 public class Webserver {
+	String[] hosts = { "node02.iotatoken.nl" };
 	Map<String, String> files = new HashMap<>();
 	IotaAPI api;
 
@@ -175,7 +176,6 @@ public class Webserver {
 		dateFormatGmt = new SimpleDateFormat("yyyy-MMM-dd HH:mm:ss");
 		dateFormatGmt.setTimeZone(TimeZone.getTimeZone("GMT"));
 
-		String[] hosts = { "10.128.0.4" };
 
 		int nodeindex = 0;
 		do {
