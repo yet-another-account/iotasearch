@@ -32,8 +32,10 @@ import eukaryote.iota.waybackdb.WayBackDB;
 import jota.IotaAPI;
 import jota.dto.response.FindTransactionResponse;
 import jota.dto.response.GetNodeInfoResponse;
+import jota.error.InvalidAddressException;
 import jota.error.NoNodeInfoException;
 import jota.model.Transaction;
+import jota.utils.Checksum;
 import jota.utils.Converter;
 import jota.utils.IotaUnitConverter;
 import lombok.extern.slf4j.Slf4j;
@@ -105,6 +107,8 @@ public class Webserver {
 
 		get("/transaction/:hash", (req, res) -> {
 			String hash = req.params("hash");
+			if (hash.equals("999999999999999999999999999999999999999999999999999999999999999999999999999999999"))
+				return files.get("invalidhash");
 
 			List<Transaction> txns = api.getTransactionsObjects(new String[] { hash });
 			if (!txns.get(0).getHash()
