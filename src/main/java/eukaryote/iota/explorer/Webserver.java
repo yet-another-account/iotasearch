@@ -46,7 +46,7 @@ import static spark.Spark.*;
 
 @Slf4j
 public class Webserver {
-	String[] hosts = { "node04.iotatoken.nl", "service.iotasupport.com" };
+	String[] hosts = { "10.128.0.4", "node04.iotatoken.nl", "service.iotasupport.com" };
 	Map<String, String> files = new HashMap<>();
 	IotaAPI api;
 
