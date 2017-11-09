@@ -154,7 +154,7 @@ public class Webserver {
 						.replace("<$milestoneindex$>", "" + nodeInfo.getLatestMilestoneIndex());
 			}
 
-			FindTransactionResponse ftba = api.findTransactionsByAddresses(hash);
+			FindTransactionResponse ftba = api.findTransactionsByAddresses(Checksum.removeChecksum(hash));
 			
 			List<Transaction> waybacktxs = wayback.getTransactionsByAddress(hash);
 
@@ -461,7 +461,7 @@ public class Webserver {
 
 	String coordinator = "KPWCHICGJZXKE9GSUDXZYUAPLHAKAHYHDXNPHENTERYMMBQOPSQIDENXKLKCEYCPVTZQLEEJVYJZV9BWU";
 
-	public String formatAddr(String addr, String[] hashes, List<Transaction> waybacktxs) {
+	public String formatAddr(String addr, String[] hashes, List<Transaction> waybacktxs) throws NumberFormatException, InvalidAddressException {
 		NumberFormat formatter = NumberFormat.getCurrencyInstance();
 
 		StringBuilder sb = new StringBuilder();
@@ -487,7 +487,7 @@ public class Webserver {
 				+ "<span title=\"Checksum\" id=\"addr-checksum\" class=\"text-muted\">" + addr.substring(81)
 				+ "</span></span></td></tr>");
 
-		long bal = Long.parseLong(api.getBalances(1, new String[] { addr }).getBalances()[0]);
+		long bal = Long.parseLong(api.getBalances(1, new String[] { Checksum.removeChecksum(addr) }).getBalances()[0]);
 
 		sb.append("<tr><td>Final Balance: </td><td>" + IotaUnitConverter.convertRawIotaAmountToDisplayText(bal, true)
 				+ "</td></tr>");
